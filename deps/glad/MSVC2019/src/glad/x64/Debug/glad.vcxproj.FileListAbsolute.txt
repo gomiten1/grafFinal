@@ -1,0 +1,2 @@
+D:\develop\stv-labcgeihc2021-2\deps\glad\lib\Debug\glad.pdb
+D:\develop\stv-labcgeihc2021-2\deps\glad\src\glad\x64\Debug\glad.pdb
