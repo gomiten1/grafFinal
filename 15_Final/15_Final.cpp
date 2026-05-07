@@ -483,14 +483,6 @@ bool Start() {
 	pinguino = new Model("models/pinguino.fbx");
 	loadedModels++;
 
-	std::cout << "Attempting to load: models/reno.fbx" << std::endl;
-	reno = new Model("models/reno.fbx");
-	loadedModels++;
-
-	
-
-	
-
 	std::cout << "Attempting to load: models/ship.fbx" << std::endl;
 	ship = new Model("models/ship.fbx");
 	loadedModels++;
@@ -515,20 +507,28 @@ bool Start() {
 	wolf = new Model("models/wolf.fbx");
 	loadedModels++;
 
-	std::cout << "Attempting to load: models/humanos/Trabajador_animado.fbx" << std::endl;
-	trabajadorAnimado = new Model("models/humanos/Trabajador_animado.fbx");
-	loadedModels++;
-
-	std::cout << "Attempting to load: models/humanos/Trabajadora_animada.fbx" << std::endl;
+	/*std::cout << "Attempting to load: models/humanos/Trabajadora_animada.fbx" << std::endl;
 	trabajadoraAnimada = new Model("models/humanos/Trabajadora_animada.fbx");
 	loadedModels++;
+
+	std::cout << "Attempting to load: models/humanos/Trabajador_animado.fbx" << std::endl;
+	trabajadorAnimado = new Model("models/humanos/Trabajador_animado.fbx");
+	loadedModels++;*/
+
+	
 
 	std::cout << "Attempting to load: models/rig.fbx" << std::endl;
 	rig = new Model("models/rig.fbx");
 	loadedModels++;
 
+	
+
 	std::cout << "Attempting to load: models/seal.fbx" << std::endl;
 	seal = new Model("models/seal.fbx");
+	loadedModels++;
+
+	std::cout << "Attempting to load: models/reno.fbx" << std::endl;
+	reno = new Model("models/reno.fbx");
 	loadedModels++;
 
 	std::cout << "Loaded " << loadedModels << " individual models" << std::endl;
@@ -773,11 +773,11 @@ bool Update() {
 		activeShader->setMat4("model", wolfModel);
 		wolf->Draw(*activeShader);
 
-		activeShader->setMat4("model", trabajadorAnimadoModel);
+		/*activeShader->setMat4("model", trabajadorAnimadoModel);
 		trabajadorAnimado->Draw(*activeShader);
 
 		activeShader->setMat4("model", trabajadoraAnimadaModel);
-		trabajadoraAnimada->Draw(*activeShader);
+		trabajadoraAnimada->Draw(*activeShader);*/
 	}
 
 	glUseProgram(0);
