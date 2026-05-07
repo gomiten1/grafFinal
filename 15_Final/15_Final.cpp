@@ -87,30 +87,35 @@ Model* icebergChico;
 Model* icebergGrande;
 Model* iglu;
 Model* zorro;
+Model* ola;
 
 glm::vec3 barconewPosition(6.0f, 0.0f, 0.0f);
 glm::vec3 icebergChicoPosition(1.8f, 0.0f, 5.6f);
 glm::vec3 icebergGrandePosition(-4.8f, 0.0f, 3.5f);
 glm::vec3 igluPosition(-4.8f, 0.0f, -3.5f);
 glm::vec3 zorroPosition(1.8f, 0.0f, -5.6f);
+glm::vec3 olaPosition(0.0f, 0.0f, 0.0f);
 
 glm::vec3 barconewRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 icebergChicoRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 icebergGrandeRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 igluRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 zorroRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 olaRotation(0.0f, 0.0f, 0.0f);
 
 glm::vec3 barconewScale(1.0f, 1.0f, 1.0f);
 glm::vec3 icebergChicoScale(1.0f, 1.0f, 1.0f);
 glm::vec3 icebergGrandeScale(1.0f, 1.0f, 1.0f);
 glm::vec3 igluScale(1.0f, 1.0f, 1.0f);
 glm::vec3 zorroScale(1.0f, 1.0f, 1.0f);
+glm::vec3 olaScale(2.0f, 2.0f, 2.0f);
 
 glm::mat4 barconewModel = glm::mat4(1.0f);
 glm::mat4 icebergChicoModel = glm::mat4(1.0f);
 glm::mat4 icebergGrandeModel = glm::mat4(1.0f);
 glm::mat4 igluModel = glm::mat4(1.0f);
 glm::mat4 zorroModel = glm::mat4(1.0f);
+glm::mat4 olaModel = glm::mat4(1.0f);
 
 Model* leonMarino;
 Model* osoA;
@@ -296,6 +301,7 @@ void UpdateModelMatrices() {
 	icebergGrandeModel = BuildModelMatrix(icebergGrandePosition, icebergGrandeRotation, icebergGrandeScale);
 	igluModel = BuildModelMatrix(igluPosition, igluRotation, igluScale);
 	zorroModel = BuildModelMatrix(zorroPosition, zorroRotation, zorroScale);
+	olaModel = BuildModelMatrix(olaPosition, olaRotation, olaScale);
 	leonMarinoModel = BuildModelMatrix(leonMarinoPosition, leonMarinoRotation, leonMarinoScale);
 	osoAModel = BuildModelMatrix(osoAPosition, osoARotation, osoAScale);
 	pexDoradoModel = BuildModelMatrix(pexDoradoPosition, pexDoradoRotation, pexDoradoScale);
@@ -438,6 +444,10 @@ bool Start() {
 
 	std::cout << "Attempting to load: models/zorro.fbx" << std::endl;
 	zorro = new Model("models/zorro.fbx");
+	loadedModels++;
+
+	std::cout << "Attempting to load: models/ola.fbx" << std::endl;
+	ola = new Model("models/ola.fbx");
 	loadedModels++;
 
 	std::cout << "Attempting to load: models/LEONMARINO.fbx" << std::endl;
@@ -819,6 +829,37 @@ bool Update() {
 
 		activeShader->setMat4("model", trabajadoraAnimadaModel);
 		trabajadoraAnimada->Draw(*activeShader);*/
+	}
+
+	// Renderizar la ola animada con shader de ondas
+	{
+		// Activamos el shader de Phong
+		wavesShader->use();
+
+		// Activamos para objetos transparentes
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		// Aplicamos transformaciones de proyección y cámara
+		wavesShader->setMat4("projection", projection);
+		wavesShader->setMat4("view", view);
+
+		// Aplicamos transformaciones del modelo
+		glm::mat4 waveModel = glm::mat4(1.0f);
+		waveModel = glm::translate(waveModel, olaPosition);
+		waveModel = glm::rotate(waveModel, glm::radians(olaRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+		waveModel = glm::rotate(waveModel, glm::radians(olaRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+		waveModel = glm::rotate(waveModel, glm::radians(olaRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+		waveModel = glm::scale(waveModel, olaScale);
+
+		wavesShader->setMat4("model", waveModel);
+
+		wavesShader->setFloat("time", wavesTime);
+		wavesShader->setFloat("radius", 5.0f);
+		wavesShader->setFloat("height", 5.0f);
+
+		ola->Draw(*wavesShader);
+		wavesTime += 0.01f;
 	}
 
 	glUseProgram(0);
