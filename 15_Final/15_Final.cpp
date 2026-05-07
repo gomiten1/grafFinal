@@ -70,6 +70,7 @@ float     rotateCharacter = 0.0f;
 
 // Shaders
 Shader *mLightsShader;        // Phong con múltiples luces
+Shader *basicPhongShader;      // Phong simple (1 luz)
 Shader *fresnelShader;         // Fresnel
 Shader *proceduralShader;
 Shader *wavesShader;
@@ -77,7 +78,7 @@ Shader *wavesShader;
 Shader *cubemapShader;
 Shader *dynamicShader;
 
-// Tipo de iluminación (0 = Phong, 1 = Fresnel)
+// Tipo de iluminación (0 = Phong MultiLights, 1 = Fresnel, 2 = Phong Simple)
 int lightingMode = 0;
 
 // Carga la información del modelo
@@ -225,6 +226,7 @@ glm::mat4 orcaModel = glm::mat4(1.0f);
 glm::mat4 pezModel = glm::mat4(1.0f);
 glm::mat4 pinguinoModel = glm::mat4(1.0f);
 glm::mat4 renoModel = glm::mat4(1.0f);
+glm::mat4 renoPlayerModel = glm::mat4(1.0f);
 glm::mat4 rigModel = glm::mat4(1.0f);
 glm::mat4 sealModel = glm::mat4(1.0f);
 glm::mat4 shipModel = glm::mat4(1.0f);
@@ -308,6 +310,9 @@ void UpdateModelMatrices() {
 	pezModel = BuildModelMatrix(pezPosition, pezRotation, pezScale);
 	pinguinoModel = BuildModelMatrix(pinguinoPosition, pinguinoRotation, pinguinoScale);
 	renoModel = BuildModelMatrix(renoPosition, renoRotation, renoScale);
+
+	// Matriz para el reno-controlable (jugador)
+	renoPlayerModel = BuildModelMatrix(position, glm::vec3(0.0f, rotateCharacter, 0.0f), renoScale);
 	rigModel = BuildModelMatrix(rigPosition, rigRotation, rigScale);
 	sealModel = BuildModelMatrix(sealPosition, sealRotation, sealScale);
 	shipModel = BuildModelMatrix(shipPosition, shipRotation, shipScale);
@@ -327,7 +332,10 @@ float alpha = 0.0f;
 // Cubemap
 CubeMap *mainCubeMap;
 
-// Light gLight;
+// Light para modo simple
+Light gSimpleLight;
+
+// Luces para modo MultiLights
 std::vector<Light> gLights;
 
 // Materiales
@@ -396,6 +404,7 @@ bool Start() {
 
 	// Compilación y enlace de shaders
 	mLightsShader = new Shader("shaders/11_PhongShaderMultLights.vs", "shaders/11_PhongShaderMultLights.fs");
+	basicPhongShader = new Shader("shaders/11_BasicPhongShader.vs", "shaders/11_BasicPhongShader.fs");
 	fresnelShader = new Shader("shaders/11_Fresnel.vs", "shaders/11_Fresnel.fs");
 	proceduralShader = new Shader("shaders/12_ProceduralAnimation.vs", "shaders/12_ProceduralAnimation.fs");
 	wavesShader = new Shader("shaders/13_wavesAnimation.vs", "shaders/13_wavesAnimation.fs");
@@ -483,6 +492,14 @@ bool Start() {
 	pinguino = new Model("models/pinguino.fbx");
 	loadedModels++;
 
+	std::cout << "Attempting to load: models/reno.fbx" << std::endl;
+	reno = new Model("models/reno.fbx");
+	loadedModels++;
+
+	
+
+	
+
 	std::cout << "Attempting to load: models/ship.fbx" << std::endl;
 	ship = new Model("models/ship.fbx");
 	loadedModels++;
@@ -507,28 +524,20 @@ bool Start() {
 	wolf = new Model("models/wolf.fbx");
 	loadedModels++;
 
-	/*std::cout << "Attempting to load: models/humanos/Trabajadora_animada.fbx" << std::endl;
-	trabajadoraAnimada = new Model("models/humanos/Trabajadora_animada.fbx");
+	/*std::cout << "Attempting to load: models/humanos/Trabajador_animado.fbx" << std::endl;
+	trabajadorAnimado = new Model("models/humanos/Trabajador_animado.fbx");
 	loadedModels++;
 
-	std::cout << "Attempting to load: models/humanos/Trabajador_animado.fbx" << std::endl;
-	trabajadorAnimado = new Model("models/humanos/Trabajador_animado.fbx");
+	std::cout << "Attempting to load: models/humanos/Trabajadora_animada.fbx" << std::endl;
+	trabajadoraAnimada = new Model("models/humanos/Trabajadora_animada.fbx");
 	loadedModels++;*/
-
-	
 
 	std::cout << "Attempting to load: models/rig.fbx" << std::endl;
 	rig = new Model("models/rig.fbx");
 	loadedModels++;
 
-	
-
 	std::cout << "Attempting to load: models/seal.fbx" << std::endl;
 	seal = new Model("models/seal.fbx");
-	loadedModels++;
-
-	std::cout << "Attempting to load: models/reno.fbx" << std::endl;
-	reno = new Model("models/reno.fbx");
 	loadedModels++;
 
 	std::cout << "Loaded " << loadedModels << " individual models" << std::endl;
@@ -572,6 +581,13 @@ bool Start() {
 	light04.Position = glm::vec3(-5.0f, 2.0f, -5.0f);
 	light04.Color = glm::vec4(0.2f, 0.2f, 0.0f, 1.0f);
 	gLights.push_back(light04);
+	
+	// Configure simple light for BasicPhongShader mode
+	gSimpleLight.Position = glm::vec3(5.0f, 5.0f, 5.0f);
+	gSimpleLight.Color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	gSimpleLight.Power = glm::vec4(60.0f, 60.0f, 60.0f, 1.0f);
+	gSimpleLight.alphaIndex = 10;
+	gSimpleLight.distance = 5.0f;
 	
 	// SoundEngine->play2D("sound/EternalGarden.mp3", true);
 
@@ -649,14 +665,21 @@ bool Update() {
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
 		// Seleccionar shader según modo de iluminación
-		Shader* activeShader = (lightingMode == 0) ? mLightsShader : fresnelShader;
+		Shader* activeShader;
+		if (lightingMode == 0) {
+			activeShader = mLightsShader;
+		} else if (lightingMode == 1) {
+			activeShader = fresnelShader;
+		} else {
+			activeShader = basicPhongShader;
+		}
 		activeShader->use();
 
 		activeShader->setMat4("projection", projection);
 		activeShader->setMat4("view", view);
 
 		if (lightingMode == 0) {
-			// Configuración para Phong
+			// Configuración para Phong MultiLights
 			// Configuramos propiedades de fuentes de luz
 			mLightsShader->setInt("numLights", (int)gLights.size());
 			for (size_t i = 0; i < gLights.size(); ++i) {
@@ -676,20 +699,34 @@ bool Update() {
 			mLightsShader->setVec4("MaterialSpecularColor", material01.specular);
 			mLightsShader->setFloat("transparency", material01.transparency);
 		}
-		else {
+		else if (lightingMode == 1) {
 			// Configuración para Fresnel - bindear cubemap una sola vez
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, mainCubeMap->textureID);
 			fresnelShader->setInt("cubetex", 0);  // Texture unit 0
-		}
 
-		if (lightingMode == 1) {
 			// Configurar uniforms Fresnel una vez por frame
 			fresnelShader->setVec3("cameraPosition", camera.Position);
 			fresnelShader->setFloat("mRefractionRatio", 1.0f / 1.003f);  // Aire
 			fresnelShader->setFloat("_Bias", 0.1f);
 			fresnelShader->setFloat("_Scale", 0.1f);
 			fresnelShader->setFloat("_Power", 1.0f);
+		}
+		else {
+			// Configuración para Phong Simple (1 luz)
+			basicPhongShader->setVec4("LightColor", gSimpleLight.Color);
+			basicPhongShader->setVec4("LightPower", gSimpleLight.Power);
+			basicPhongShader->setInt("alphaIndex", gSimpleLight.alphaIndex);
+			basicPhongShader->setFloat("distance", gSimpleLight.distance);
+			basicPhongShader->setVec3("lightPosition", gSimpleLight.Position);
+			basicPhongShader->setVec3("lightDirection", gSimpleLight.Direction);
+			basicPhongShader->setVec3("eye", camera.Position);
+
+			// Aplicamos propiedades materiales
+			basicPhongShader->setVec4("MaterialAmbientColor", material01.ambient);
+			basicPhongShader->setVec4("MaterialDiffuseColor", material01.diffuse);
+			basicPhongShader->setVec4("MaterialSpecularColor", material01.specular);
+			basicPhongShader->setFloat("transparency", material01.transparency);
 		}
 
 		activeShader->setMat4("model", barconewModel);
@@ -749,6 +786,10 @@ bool Update() {
 		activeShader->setMat4("model", renoModel);
 		reno->Draw(*activeShader);
 
+		// Dibujamos también el reno del jugador en la posición controlada
+		activeShader->setMat4("model", renoPlayerModel);
+		reno->Draw(*activeShader);
+
 		activeShader->setMat4("model", rigModel);
 		rig->Draw(*activeShader);
 
@@ -796,13 +837,53 @@ void processInput(GLFWwindow* window)
 		glfwSetWindowShouldClose(window, true);
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.ProcessKeyboard(FORWARD, deltaTime);
+	{
+		if (activeCamera) camera.ProcessKeyboard(FORWARD, deltaTime);
+		else {
+			// Move player forward in third-person
+			position = position + scaleV * forwardView;
+			camera3rd.Front = forwardView;
+			camera3rd.Position = position;
+			camera3rd.Position.y += 1.7f;
+			camera3rd.Position -= trdpersonOffset * forwardView;
+		}
+	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera.ProcessKeyboard(BACKWARD, deltaTime);
+	{
+		if (activeCamera) camera.ProcessKeyboard(BACKWARD, deltaTime);
+		else {
+			position = position - scaleV * forwardView;
+			camera3rd.Front = forwardView;
+			camera3rd.Position = position;
+			camera3rd.Position.y += 1.7f;
+			camera3rd.Position -= trdpersonOffset * forwardView;
+		}
+	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera.ProcessKeyboard(LEFT, deltaTime);
+	{
+		if (activeCamera) camera.ProcessKeyboard(LEFT, deltaTime);
+		else {
+			// Strafe left for player
+			glm::vec3 right = glm::normalize(glm::cross(forwardView, glm::vec3(0.0f,1.0f,0.0f)));
+			glm::vec3 left = -right;
+			position += scaleV * left;
+			camera3rd.Position = position;
+			camera3rd.Position.y += 1.7f;
+			camera3rd.Position -= trdpersonOffset * forwardView;
+		}
+	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera.ProcessKeyboard(RIGHT, deltaTime);
+	{
+		if (activeCamera) camera.ProcessKeyboard(RIGHT, deltaTime);
+		else {
+			// Strafe right for player
+			glm::vec3 right = glm::normalize(glm::cross(forwardView, glm::vec3(0.0f,1.0f,0.0f)));
+			position += scaleV * right;
+			camera3rd.Position = position;
+			camera3rd.Position.y += 1.7f;
+			camera3rd.Position -= trdpersonOffset * forwardView;
+		}
+	}
 	if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS)
@@ -845,9 +926,10 @@ void processInput(GLFWwindow* window)
 	// Cambiar tipo de iluminación (L = Lighting)
 	static bool lKeyPressed = false;
 	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS && !lKeyPressed) {
-		lightingMode = (lightingMode + 1) % 2;
+		lightingMode = (lightingMode + 1) % 3;
 		lKeyPressed = true;
-		std::cout << "Lighting mode changed to: " << (lightingMode == 0 ? "Phong" : "Fresnel") << std::endl;
+		const char* modeNames[] = { "Phong MultiLights", "Fresnel", "Phong Simple" };
+		std::cout << "Lighting mode changed to: " << modeNames[lightingMode] << std::endl;
 	}
 	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_RELEASE) {
 		lKeyPressed = false;
@@ -931,7 +1013,25 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	lastX = (float)xpos;
 	lastY = (float)ypos;
 
-	camera.ProcessMouseMovement(xoffset, yoffset);
+	if (activeCamera) {
+		camera.ProcessMouseMovement(xoffset, yoffset);
+	}
+	else {
+		// Rotate the character horizontally with mouse in 3rd person
+		float sensitivity = 0.1f;
+		rotateCharacter += xoffset * sensitivity;
+
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::rotate(model, glm::radians(rotateCharacter), glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::vec4 viewVector = model * glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+		forwardView = glm::vec3(viewVector);
+		forwardView = glm::normalize(forwardView);
+
+		camera3rd.Front = forwardView;
+		camera3rd.Position = position;
+		camera3rd.Position.y += 1.7f;
+		camera3rd.Position -= trdpersonOffset * forwardView;
+	}
 }
 
 // glfw: Complemento para el movimiento y eventos del mouse
