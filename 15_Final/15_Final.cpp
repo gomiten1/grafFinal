@@ -163,7 +163,7 @@ glm::vec3 fishPosition(0.0f, 20.0f, 0.0f);
 glm::vec3 gasPosition(-18.0f, 0.0f, 6.0f);
 glm::vec3 icebergAPosition(-25.0f, -1.0f, 25.0f);
 glm::vec3 icebergDPosition(15.0f, 0.0f, 15.0f);
-glm::vec3 oilPumpPosition(-100.0f, 20.0f, 6.0f);
+glm::vec3 oilPumpPosition(-150.0f, 0.5f, 6.0f);
 glm::vec3 orcaPosition(6.0f, 0.0f, 6.0f);
 glm::vec3 pezPosition(-40.0f, 1.0f,10.0f);
 glm::vec3 pinguinoPosition(-18.0f, 0.0f, 0.0f);
@@ -172,9 +172,9 @@ glm::vec3 rigPosition(-6.0f, -5.0f, 0.0f);
 glm::vec3 sealPosition(0.0f, 0.0f, 0.0f);
 glm::vec3 shipPosition(6.0f, 0.0f, 0.0f);
 glm::vec3 tanqueDerramadoPosition(12.0f, 0.0f, 0.0f);
-glm::vec3 tanqueGrandePosition(-18.0f, 0.0f, -6.0f);
+glm::vec3 tanqueGrandePosition(-150.0f, 6.0f, 10.0f);
 glm::vec3 tanquesPosition(-12.0f, 0.0f, -6.0f);
-glm::vec3 titanicPosition(-6.0f, 0.0f, -6.0f);
+glm::vec3 titanicPosition(-6.0f, 20.0f, -6.0f);
 glm::vec3 wolfPosition(0.0f, 0.0f, -6.0f);
 glm::vec3 trabajadorAnimadoPosition(24.0f, 3.0f, -6.0f);
 glm::vec3 trabajadoraAnimadaPosition(51.0f, 10.0f, -6.0f);
@@ -197,7 +197,7 @@ glm::vec3 rigRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 sealRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 shipRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 tanqueDerramadoRotation(0.0f, 0.0f, 0.0f);
-glm::vec3 tanqueGrandeRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 tanqueGrandeRotation(-90.0f, 0.0f, 90.0f);
 glm::vec3 tanquesRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 titanicRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 wolfRotation(0.0f, 0.0f, 0.0f);
@@ -230,7 +230,7 @@ glm::vec3 fishScale(1.0f, 1.0f, 1.0f);
 glm::vec3 gasScale(1.0f, 1.0f, 1.0f);
 glm::vec3 icebergAScale(5.0f, 5.0f, 5.0f);
 glm::vec3 icebergDScale(1.0f, 1.0f, 1.0f);
-glm::vec3 oilPumpScale(20.0f, 20.0f, 20.0f);
+glm::vec3 oilPumpScale(15.0f, 15.0f, 15.0f);
 glm::vec3 orcaScale(1.0f, 1.0f, 1.0f);
 glm::vec3 pezScale(0.01f, 0.01f, 0.01f);
 glm::vec3 pinguinoScale(1.0f, 1.0f, 1.0f);
@@ -239,9 +239,9 @@ glm::vec3 rigScale(1.0f, 1.0f, 1.0f);
 glm::vec3 sealScale(1.0f, 1.0f, 1.0f);
 glm::vec3 shipScale(1.0f, 1.0f, 1.0f);
 glm::vec3 tanqueDerramadoScale(1.0f, 1.0f, 1.0f);
-glm::vec3 tanqueGrandeScale(1.0f, 1.0f, 1.0f);
+glm::vec3 tanqueGrandeScale(4.0f, 4.0f, 4.0f);
 glm::vec3 tanquesScale(1.0f, 1.0f, 1.0f);
-glm::vec3 titanicScale(1.0f, 1.0f, 1.0f);
+glm::vec3 titanicScale(0.1f, 0.1f, 0.1f);
 glm::vec3 wolfScale(1.0f, 1.0f, 1.0f);
 glm::vec3 trabajadorAnimadoScale(0.035f, 0.035f, 0.035f);
 glm::vec3 trabajadoraAnimadaScale(0.035f, 0.035f, 0.035f);
@@ -905,7 +905,7 @@ bool Update() {
 		
 		// Actualizar tiempo de animación solo si la ola está animada
 		if (waveAnimationActive) {
-			wavesTime += 0.01f; // avance del tiempo de animación (menor = movimiento más lento)
+			wavesTime += 0.017f; // avance del tiempo de animación (menor = movimiento más lento)
 		}
 
 		// restore previously active shader
@@ -1252,6 +1252,11 @@ bool Update() {
 			pinguino->Draw(*activeShader);
 		}
 
+		if (sceneMode == 1){
+			activeShader->setMat4("model", tanqueGrandeModel);
+			tanqueGrande->Draw(*activeShader);
+		}
+
 		// --- CONTAMINACIÓN NIVEL 1 (Barriles y Gas) ---
 		if (sceneMode >= 1) {
 			// Aparecen unos tanques de gas cerca del clúster
@@ -1273,11 +1278,11 @@ bool Update() {
 			rig->Draw(*activeShader);
 
 			// El barco hundiéndose (Titanic o Ship)
-			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-90.0f, 0.0f, -50.0f), shipRotation + glm::vec3(90, 0, 10), glm::vec3(2.0f)));
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 3.0f, -200.0f), shipRotation + glm::vec3(90, 90, 10), glm::vec3(0.1f)));
 			ship->Draw(*activeShader);
 
 			// Derrame de petróleo
-			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(90.0f, 0.0f, -20.0f), tanqueDerramadoRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(2.5f)));
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(69.0f, 19.0f, -12.0f), tanqueDerramadoRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(2.5f)));
 			tanqueDerramado->Draw(*activeShader);
 		}
 
@@ -1454,8 +1459,7 @@ bool Update() {
 		activeShader->setMat4("model", tanqueDerramadoModel);
 		tanqueDerramado->Draw(*activeShader);
 
-		activeShader->setMat4("model", tanqueGrandeModel);
-		tanqueGrande->Draw(*activeShader);
+		
 
 		activeShader->setMat4("model", tanquesModel);
 		tanques->Draw(*activeShader);
@@ -1531,6 +1535,28 @@ void processInput(GLFWwindow* window)
 			glm::vec3 right = glm::normalize(glm::cross(forwardView, glm::vec3(0.0f,1.0f,0.0f)));
 			float moveStep = camera.MovementSpeed * deltaTime;
 			position += moveStep * right;
+			camera3rd.Position = position;
+			camera3rd.Position.y += trdpersonHeightOffset;
+			camera3rd.Position -= trdpersonOffset * forwardView;
+		}
+	}
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	{
+		float moveStep = camera.MovementSpeed * deltaTime;
+		if (activeCamera) camera.Position.y += moveStep;
+		else {
+			position.y += moveStep;
+			camera3rd.Position = position;
+			camera3rd.Position.y += trdpersonHeightOffset;
+			camera3rd.Position -= trdpersonOffset * forwardView;
+		}
+	}
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+	{
+		float moveStep = camera.MovementSpeed * deltaTime;
+		if (activeCamera) camera.Position.y -= moveStep;
+		else {
+			position.y -= moveStep;
 			camera3rd.Position = position;
 			camera3rd.Position.y += trdpersonHeightOffset;
 			camera3rd.Position -= trdpersonOffset * forwardView;
