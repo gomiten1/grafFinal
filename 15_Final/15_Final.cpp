@@ -42,6 +42,8 @@ void processInput(GLFWwindow *window);
 
 // Gobals
 GLFWwindow* window;
+// 0 = Saludable, 1 = Contaminación inicial, 2 = Desastre industrial
+int sceneMode = 0;
 
 // Tamaño en pixeles de la ventana
 const unsigned int SCR_WIDTH = 1024;
@@ -652,6 +654,10 @@ void SetLightUniformVec3(Shader* shader, const char* propertyName, size_t lightI
 
 
 bool Update() {
+	float derretimiento = 1.0f;
+	if (sceneMode == 1) derretimiento = 2.0f; // Se hunden un poco
+	if (sceneMode == 2) derretimiento = 6.0f; // Se hunden mucho (derretidos)
+
 	// Cálculo del framerate
 	float currentFrame = (float)glfwGetTime();
 	deltaTime = currentFrame - lastFrame;
@@ -836,28 +842,28 @@ bool Update() {
 		// Escala sugerida: 2.5f para que sea un clúster pequeño
 
 		// Placa 1: Frontal izquierda
-		glm::mat4 d1 = BuildModelMatrix(glm::vec3(-2.0f, 0.0f, 15.0f), icebergDRotation, glm::vec3(2.5f));
+		glm::mat4 d1 = BuildModelMatrix(icebergDPosition + glm::vec3(-2.0f, derretimiento, 15.0f), icebergDRotation, glm::vec3(2.5f));
 		activeShader->setMat4("model", d1);
 		icebergD->Draw(*activeShader);
 
 		// Placa 2: Frontal derecha (solo 4 unidades de diferencia en X)
-		glm::mat4 d2 = BuildModelMatrix(glm::vec3(2.0f, -0.1f, 15.5f), icebergDRotation + glm::vec3(0, 15, 0), glm::vec3(2.2f));
+		glm::mat4 d2 = BuildModelMatrix(icebergDPosition + glm::vec3(2.0f, derretimiento * -0.1f, 15.5f), icebergDRotation + glm::vec3(0, 15, 0), glm::vec3(2.2f));
 		activeShader->setMat4("model", d2);
 		icebergD->Draw(*activeShader);
 
 		// Placa 3: Trasera izquierda
-		glm::mat4 d3 = BuildModelMatrix(glm::vec3(-2.5f, -0.05f, 19.0f), icebergDRotation + glm::vec3(0, -10, 0), glm::vec3(2.8f));
+		glm::mat4 d3 = BuildModelMatrix(icebergDPosition + glm::vec3(-2.5f, derretimiento * -0.05f, 19.0f), icebergDRotation + glm::vec3(0, -10, 0), glm::vec3(2.8f));
 		activeShader->setMat4("model", d3);
 		icebergD->Draw(*activeShader);
 
 		// Placa 4: Trasera derecha
-		glm::mat4 d4 = BuildModelMatrix(glm::vec3(2.5f, 0.0f, 19.5f), icebergDRotation + glm::vec3(0, 45, 0), glm::vec3(2.3f));
+		glm::mat4 d4 = BuildModelMatrix(icebergDPosition + glm::vec3(2.5f, derretimiento * 0.0f, 19.5f), icebergDRotation + glm::vec3(0, 45, 0), glm::vec3(2.3f));
 		activeShader->setMat4("model", d4);
 		icebergD->Draw(*activeShader);
 
 		// --- MONTAÑA CENTRAL COMPACTA (TIPO A) ---
 		// Ahora con escala 3.0 para que destaque pero no sea gigante
-		glm::mat4 aCentro = BuildModelMatrix(glm::vec3(0.0f, 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f));
+		glm::mat4 aCentro = BuildModelMatrix(glm::vec3(0.0f, derretimiento * 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f));
 		activeShader->setMat4("model", aCentro);
 		icebergA->Draw(*activeShader);
 
@@ -869,24 +875,24 @@ bool Update() {
 		glm::vec3 miniScale(1.5f);
 
 		// Fila 1 (Alineada con el frente del clúster)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(8.0f, 0.0f, 15.0f), icebergDRotation + glm::vec3(0, 10, 0), miniScale));
+		activeShader->setMat4("model", BuildModelMatrix(icebergDPosition + glm::vec3(8.0f, derretimiento * 0.0f, 15.0f), icebergDRotation + glm::vec3(0, 10, 0), miniScale));
 		icebergD->Draw(*activeShader);
 
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(12.0f, -0.05f, 15.0f), icebergDRotation + glm::vec3(0, 45, 0), miniScale));
+		activeShader->setMat4("model", BuildModelMatrix(icebergDPosition + glm::vec3(12.0f, derretimiento * -0.05f, 15.0f), icebergDRotation + glm::vec3(0, 45, 0), miniScale));
 		icebergD->Draw(*activeShader);
 
 		// Fila 2 (Alineada con el centro del clúster)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(8.5f, 0.0f, 18.0f), icebergDRotation + glm::vec3(0, -20, 0), miniScale));
+		activeShader->setMat4("model", BuildModelMatrix(icebergDPosition + glm::vec3(8.5f, derretimiento * 0.0f, 18.0f), icebergDRotation + glm::vec3(0, -20, 0), miniScale));
 		icebergD->Draw(*activeShader);
 
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(12.5f, -0.05f, 18.0f), icebergDRotation + glm::vec3(0, 75, 0), miniScale));
+		activeShader->setMat4("model", BuildModelMatrix(icebergDPosition + glm::vec3(12.5f, derretimiento * -0.05f, 18.0f), icebergDRotation + glm::vec3(0, 75, 0), miniScale));
 		icebergD->Draw(*activeShader);
 
 		// Fila 3 (Alineada con la parte trasera del clúster)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(8.0f, -0.1f, 21.0f), icebergDRotation + glm::vec3(0, 130, 0), miniScale));
+		activeShader->setMat4("model", BuildModelMatrix(icebergDPosition + glm::vec3(8.0f, derretimiento * -0.1f, 21.0f), icebergDRotation + glm::vec3(0, 130, 0), miniScale));
 		icebergD->Draw(*activeShader);
 
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(12.0f, 0.0f, 21.0f), icebergDRotation + glm::vec3(0, -5, 0), miniScale));
+		activeShader->setMat4("model", BuildModelMatrix(icebergDPosition + glm::vec3(12.0f, derretimiento * 0.0f, 21.0f), icebergDRotation + glm::vec3(0, -5, 0), miniScale));
 		icebergD->Draw(*activeShader);
 
 		// =========================================================
@@ -894,24 +900,24 @@ bool Update() {
 		// =========================================================
 
 
-		glm::mat4 dFugitivo = BuildModelMatrix(glm::vec3(-8.0f, -0.05f, 35.0f), icebergDRotation + glm::vec3(0, -25, 0), glm::vec3(1.2f));
+		glm::mat4 dFugitivo = BuildModelMatrix(icebergDPosition + glm::vec3(-8.0f, derretimiento * -0.05f, 35.0f), icebergDRotation + glm::vec3(0, -25, 0), glm::vec3(1.2f));
 		activeShader->setMat4("model", dFugitivo);
 		icebergD->Draw(*activeShader);
 
-		glm::mat4 dMiniFragmento = BuildModelMatrix(glm::vec3(-11.0f, -0.02f, 36.0f), icebergDRotation, glm::vec3(0.6f));
+		glm::mat4 dMiniFragmento = BuildModelMatrix(icebergDPosition + glm::vec3(-11.0f, derretimiento * -0.02f, 36.0f), icebergDRotation, glm::vec3(0.6f));
 		activeShader->setMat4("model", dMiniFragmento);
 		icebergD->Draw(*activeShader);
 
 		// Hielito A
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-15.0f, 0.0f, 40.0f), icebergDRotation, glm::vec3(0.5f)));
+		activeShader->setMat4("model", BuildModelMatrix(icebergDPosition + glm::vec3(-15.0f, derretimiento * 0.0f, 40.0f), icebergDRotation, glm::vec3(0.5f)));
 		icebergD->Draw(*activeShader);
 
 		// Hielito B
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-18.0f, -0.05f, 42.0f), icebergDRotation, glm::vec3(0.7f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-18.0f, derretimiento * -0.05f, 42.0f), icebergDRotation, glm::vec3(0.7f)));
 		icebergD->Draw(*activeShader);
 
 		// Hielito C
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-12.0f, 0.0f, 44.0f), icebergDRotation, glm::vec3(0.4f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-12.0f, derretimiento * 0.0f, 44.0f), icebergDRotation, glm::vec3(0.4f)));
 		icebergD->Draw(*activeShader);
 
 		// =========================================================
@@ -919,19 +925,19 @@ bool Update() {
 		// =========================================================
 	
 		// Mosaico de fondo 1 (Hacia la izquierda del centro)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-20.0f, -0.2f, -15.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(1.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-20.0f, derretimiento * -0.2f, -15.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(1.0f)));
 		icebergD->Draw(*activeShader);
 
 		// Mosaico de fondo 2 (Casi al centro pero más al fondo)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, -0.1f, -25.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(1.5f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, derretimiento * -0.1f, -25.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(1.5f)));
 		icebergD->Draw(*activeShader);
 
 		// Mosaico de fondo 3 (Hacia la derecha del centro)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(20.0f, -0.2f, -18.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(1.2f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(20.0f, derretimiento * -0.2f, -18.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(1.2f)));
 		icebergD->Draw(*activeShader);
 
 		// Un hielito más pequeño para romper la simetría
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.0f, -0.1f, -10.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(1.5f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.0f, derretimiento * -0.1f, -10.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(1.5f)));
 		icebergD->Draw(*activeShader);
 
 		// =========================================================
@@ -939,11 +945,11 @@ bool Update() {
 		// =========================================================
 
 		// Gigante al fondo izquierda: Lo mandamos más a la izquierda (-85) y más al fondo (-100)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-85.0f, -4.0f, -100.0f), glm::vec3(0, 180, 0), glm::vec3(18.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-85.0f, derretimiento * -4.0f, -100.0f), glm::vec3(0, 180, 0), glm::vec3(18.0f)));
 		icebergGrande->Draw(*activeShader);
 
 		// Gigante al fondo derecha: Lo mandamos más a la derecha (90) y un poco menos al fondo (-85)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(90.0f, -3.5f, -85.0f), glm::vec3(0, 45, 0), glm::vec3(12.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(90.0f, derretimiento * -3.5f, -85.0f), glm::vec3(0, 45, 0), glm::vec3(12.0f)));
 		icebergChico->Draw(*activeShader);
 
 		// =========================================================
@@ -951,19 +957,19 @@ bool Update() {
 		// =========================================================
 
 		// Mosaico de fondo 1 (Lejos a la izquierda y muy al fondo)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-50.0f, -0.2f, -120.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(2.5f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-50.0f, derretimiento * -0.2f, -120.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(2.5f)));
 		icebergD->Draw(*activeShader);
 
 		// Mosaico de fondo 2 (Casi central pero al fondo del todo)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-10.0f, -0.1f, -140.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(3.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-10.0f, derretimiento * -0.1f, -140.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(3.0f)));
 		icebergD->Draw(*activeShader);
 
 		// Mosaico de fondo 3 (Hacia la derecha, entre los gigantes)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(40.0f, -0.2f, -115.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(2.8f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(40.0f, derretimiento * -0.2f, -115.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(2.8f)));
 		icebergD->Draw(*activeShader);
 
 		// Un hielito más pequeño para la silueta del fondo
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(15.0f, -0.1f, -130.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(2.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(15.0f, derretimiento * -0.1f, -130.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(2.0f)));
 		icebergD->Draw(*activeShader);
 
 		// =========================================================
@@ -972,26 +978,26 @@ bool Update() {
 
 
 		// Posición: X = -15, Z = 20 | Escala: 3.5f
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-15.0f, 0.1f, 20.0f), icebergARotation + glm::vec3(0, 45, 0), glm::vec3(3.5f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-15.0f, derretimiento * 0.1f, 20.0f), icebergARotation + glm::vec3(0, 45, 0), glm::vec3(3.5f)));
 		icebergA->Draw(*activeShader);
 
 		// 2. Uno pequeño junto a los mosaicos pequeños de la derecha
 		// Posición: X = 18, Z = 16 | Escala: 2.0f
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(18.0f, 0.0f, 16.0f), icebergARotation + glm::vec3(0, -20, 0), glm::vec3(2.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(18.0f, derretimiento *	0.0f, 16.0f), icebergARotation + glm::vec3(0, -20, 0), glm::vec3(2.0f)));
 		icebergA->Draw(*activeShader);
 
 		// 3. Uno más "hundido" en el agua por el área del fondo
 		// Posición: X = 5, Z = 45 | Escala: 4.0f
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.0f, -0.5f, 45.0f), icebergARotation + glm::vec3(0, 90, 0), glm::vec3(4.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.0f, derretimiento * -0.5f, 45.0f), icebergARotation + glm::vec3(0, 90, 0), glm::vec3(4.0f)));
 		icebergA->Draw(*activeShader);
 
 		// 4. Un par de "picos" lejanos para acompañar el horizonte profundo
 		// Pico lejos izquierda
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-40.0f, -0.2f, -90.0f), icebergARotation, glm::vec3(6.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-40.0f, derretimiento * -0.2f, -90.0f), icebergARotation, glm::vec3(6.0f)));
 		icebergA->Draw(*activeShader);
 
 		// Pico lejos derecha
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(45.0f, -0.2f, -110.0f), icebergARotation + glm::vec3(0, 180, 0), glm::vec3(5.5f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(45.0f, derretimiento * -0.2f, -110.0f), icebergARotation + glm::vec3(0, 180, 0), glm::vec3(5.5f)));
 		icebergA->Draw(*activeShader);
 
 		// =========================================================
@@ -999,7 +1005,7 @@ bool Update() {
 		// =========================================================
 
 		// 1. Base de hielo (Tipo D) - Escala reducida a 2.0f
-		glm::mat4 baseIglu1 = BuildModelMatrix(glm::vec3(-20.0f, 0.0f, 10.0f), icebergDRotation, glm::vec3(2.0f));
+		glm::mat4 baseIglu1 = BuildModelMatrix(glm::vec3(-20.0f, derretimiento * 0.0f, 10.0f), icebergDRotation, glm::vec3(2.0f));
 		activeShader->setMat4("model", baseIglu1);
 		icebergD->Draw(*activeShader);
 
@@ -1015,7 +1021,7 @@ bool Update() {
 		// =========================================================
 
 		// 1. Base de hielo (Tipo D) - Escala 1.5f
-		glm::mat4 baseIglu2 = BuildModelMatrix(glm::vec3(25.0f, -0.1f, -5.0f), icebergDRotation, glm::vec3(1.5f));
+		glm::mat4 baseIglu2 = BuildModelMatrix(glm::vec3(25.0f, derretimiento * -0.1f, -5.0f), icebergDRotation, glm::vec3(1.5f));
 		activeShader->setMat4("model", baseIglu2);
 		icebergD->Draw(*activeShader);
 
@@ -1029,8 +1035,8 @@ bool Update() {
 		// =========================================================
 
 		//oso tipo a: Lo colocamos cerca del clúster
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 22.0f, 17.5f), osoARotation + glm::vec3(90, 180, 90), glm::vec3(1.2f)));
-		osoA->Draw(*activeShader);
+		//activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 22.0f, 17.5f), osoARotation + glm::vec3(90, 180, 90), glm::vec3(1.2f)));
+		//osoA->Draw(*activeShader);
 
 		//
 		// Posición: X=8.0, Z=15.0 (encima de uno de los mosaicos pequeños de la derecha)
@@ -1040,16 +1046,16 @@ bool Update() {
 		bear->Draw(*activeShader);
 
 		// --- PINGUINO 1 ---
-
+		/*
 		// Posición: Cerca de X=-20, Z=10 | Escala: 0.15f (Mini para que combine con el iglú)
 		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
 		pinguino->Draw(*activeShader);
-
+		*/
 		// PINGUINO 2 
 		// Posición: X=12.0, Z=21.0 | Escala: 0.18f
 		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
 		pinguino->Draw(*activeShader);
-
+		
 		//Orca 
 
 		// Posición: X = 0 (centrada), Z = -15 (entre el centro y el fondo)
@@ -1061,7 +1067,7 @@ bool Update() {
 		float inclinacion = sin(glfwGetTime() * 0.8f) * 5.0f; // Se inclina 5 grados
 
 		activeShader->setMat4("model", BuildModelMatrix(
-			glm::vec3(10.0f, -6.0f + balanceo, -65.0f), // Aquí le sumamos el balanceo a Y
+			glm::vec3(10.0f, -8.0f + balanceo, -65.0f), // Aquí le sumamos el balanceo a Y
 			orcaRotation + glm::vec3(-90.0f + inclinacion, 0.0f, 0.0f), // Aquí inclinamos en X
 			glm::vec3(4.5f)
 		));
@@ -1100,6 +1106,116 @@ bool Update() {
 			glm::vec3(1.65f)
 		));
 		leonMarino->Draw(*activeShader);
+
+	
+		// EL ZORRO ÁRTICO
+	
+		// Posición: Cerca del Iglú 1 (Izquierda)
+		// Rotación: -90 en X para acostarlo y un giro en Y para que vea al iglú
+		activeShader->setMat4("model", BuildModelMatrix(
+			glm::vec3(-22.0f, 5.1f, 12.0f),
+			zorroRotation + glm::vec3(-90.0f, 0.0f, 90.0f),
+			glm::vec3(1.0f)
+		));
+		zorro->Draw(*activeShader);
+
+	
+		// EL RENO SALVAJE
+	
+		// Posición: En la elevación X = 18, Z = 16 (Iceberg A pequeño a la derecha)
+		// Altura: Y = 1.8f para que esté sobre la plataforma
+		activeShader->setMat4("model", BuildModelMatrix(
+			glm::vec3(48.0f, 6.8f, -100.0f),
+			renoRotation + glm::vec3(-90.0f, 0.0f, -150.0f),
+			glm::vec3(1.8f)
+		));
+		reno->Draw(*activeShader);
+
+		// --- OSO A (El rey desaparece al final) ---
+		if (sceneMode < 2) {
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 22.0f, 17.5f), osoARotation + glm::vec3(90, 180, 90), glm::vec3(1.2f)));
+			osoA->Draw(*activeShader);
+		}
+
+		// --- PINGÜINOS (En el desastre total ya no hay) ---
+		if (sceneMode == 0) {
+			// Pingüino 1 y 2 en modo saludable
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
+			pinguino->Draw(*activeShader);
+		}
+		else if (sceneMode == 1) {
+			// En modo 1 solo queda uno, asustado
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
+			pinguino->Draw(*activeShader);
+		}
+
+		// --- CONTAMINACIÓN NIVEL 1 (Barriles y Gas) ---
+		if (sceneMode >= 1) {
+			// Aparecen unos tanques de gas cerca del clúster
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-90.0f, 0.0f, 5.0f), gasRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(1.0f)));
+			gas->Draw(*activeShader);
+
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-90.0f, 0.0f, 6.0f), tanquesRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(1.2f)));
+			tanques->Draw(*activeShader);
+		}
+
+		// --- CONTAMINACIÓN NIVEL 2 (Plataforma Petrolera y Desastre) ---
+		if (sceneMode == 2) {
+			// La gran plataforma petrolera en el centro del mar
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(90.0f, 60.0f, -30.0f), rigRotation + glm::vec3(-90.0f, 0.0f, 0.0f)	, glm::vec3(1.0f)));
+			rig->Draw(*activeShader);
+
+			// El barco hundiéndose (Titanic o Ship)
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-90.0f, 0.0f, -50.0f), shipRotation + glm::vec3(90, 0, 10), glm::vec3(2.0f)));
+			ship->Draw(*activeShader);
+
+			// Derrame de petróleo
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(90.0f, 0.0f, -20.0f), tanqueDerramadoRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(2.5f)));
+			tanqueDerramado->Draw(*activeShader);
+		}
+
+		// Iceberg Grande del fondo
+		if (sceneMode < 2) { // En modo 0 y 1 se ve normal
+			activeShader->setMat4("model", icebergGrandeModel);
+			icebergGrande->Draw(*activeShader);
+		}
+		else { // En modo 2, lo hacemos más chiquito o lo hundimos más (derretido)
+			glm::mat4 derretido = BuildModelMatrix(icebergGrandePosition + glm::vec3(0, -5, 0), icebergGrandeRotation, icebergGrandeScale * 0.5f);
+			activeShader->setMat4("model", derretido);
+			icebergGrande->Draw(*activeShader);
+		}
+
+		// =========================================================
+		// CONFIGURACIÓN DE LUCES: DE NÍTIDO A GRIS INDUSTRIAL
+		// =========================================================
+
+		if (sceneMode == 0) {
+			// MODO 0: Tu configuración original (Nítida y clara)
+			gLights[0].Color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+			gLights[1].Color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
+			gLights[2].Color = glm::vec4(0.15f, 0.15f, 0.15f, 1.0f);
+			gLights[3].Color = glm::vec4(0.15f, 0.15f, 0.15f, 1.0f);
+			for (int i = 0; i < 4; i++) gLights[i].Power = glm::vec4(60.0f, 60.0f, 60.0f, 1.0f);
+		}
+		else if (sceneMode == 1) {
+			// MODO 1: Contaminación inicial (Grisáceo sutil)
+			// Usamos un gris neutro con un toque mínimo de amarillo sucio
+			glm::vec4 grayDust = glm::vec4(0.25f, 0.25f, 0.22f, 1.0f);
+			for (int i = 0; i < 4; i++) {
+				gLights[i].Color = grayDust;
+				gLights[i].Power = glm::vec4(45.0f, 45.0f, 45.0f, 1.0f); // Bajamos brillo
+			}
+		}
+		else if (sceneMode == 2) {
+			// MODO 2: Desastre (Gris profundo y opaco)
+			// Colores muy bajos para que el blanco del hielo desaparezca
+			glm::vec4 industrialGray = glm::vec4(0.12f, 0.12f, 0.13f, 1.0f);
+			for (int i = 0; i < 4; i++) {
+				gLights[i].Color = industrialGray;
+				// Luz muy débil para dar sensación de día nublado por contaminación
+				gLights[i].Power = glm::vec4(25.0f, 25.0f, 25.0f, 1.0f);
+			}
+		}
 
 		if (lightingMode == 3) {
 			// Segundo pase: Fresnel sobre los icebergs, el resto queda en Phong
@@ -1163,6 +1279,10 @@ bool Update() {
 		trabajadoraAnimada->Draw(*dynamicShader);
 		activeShader->use();
 
+
+
+		/*
+>>>>>>> 0330f11 (Adjust model positions and camera offsets)
 		activeShader->setMat4("model", oilPumpModel);
 		oilPump->Draw(*activeShader);
 
@@ -1320,6 +1440,10 @@ void processInput(GLFWwindow* window)
 		ScaleSelectedModel(-0.01f);
 	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
 		ScaleSelectedModel(0.01f);
+	// Cambiar estado del ecosistema
+	if (glfwGetKey(window, GLFW_KEY_F5) == GLFW_PRESS) sceneMode = 0;
+	if (glfwGetKey(window, GLFW_KEY_F6) == GLFW_PRESS) sceneMode = 1;
+	if (glfwGetKey(window, GLFW_KEY_F7) == GLFW_PRESS) sceneMode = 2;
 
 	// Cambiar tipo de iluminación (L = Lighting)
 	static bool lKeyPressed = false;
