@@ -5,6 +5,8 @@ in vec2 TexCoords;
 
 uniform sampler2D texture_diffuse1;
 uniform float time;
+uniform vec3 waterColorDark;
+uniform vec3 waterColorLight;
 
 void main()
 {   
@@ -17,10 +19,10 @@ void main()
     wave += sin(coordsT.y * 10.0 + time * 0.22f) * 0.3;
     wave += sin((coordsT.x + coordsT.y) * 5.0 - time * 0.22f) * 0.2;
     
-    // Color azul con variación por el patrón
+    // Color del agua configurable desde C++ según sceneMode
     vec3 waterColor = mix(
-        vec3(0.1, 0.4, 0.8),  // Azul oscuro
-        vec3(0.3, 0.7, 1.0),  // Azul claro
+        waterColorDark,
+        waterColorLight,
         wave
     );
     

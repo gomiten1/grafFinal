@@ -100,21 +100,21 @@ Model* iglu;
 Model* zorro;
 Model* ola;
 
-glm::vec3 barconewPosition(6.0f, 0.0f, 0.0f);
+glm::vec3 barconewPosition(6.0f, 5.0f, -190.0f);
 glm::vec3 icebergChicoPosition(60.0f, -2.0f, -20.0f);
 glm::vec3 icebergGrandePosition(-45.0f, -1.0f, -40.0f);
 glm::vec3 igluPosition(-4.8f, 0.0f, -3.5f);
 glm::vec3 zorroPosition(1.8f, 0.0f, -5.6f);
 glm::vec3 olaPosition(0.0f, 0.0f, 0.0f);
 
-glm::vec3 barconewRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 barconewRotation(-90.0f, 0.0f, 90.0f);
 glm::vec3 icebergChicoRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 icebergGrandeRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 igluRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 zorroRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 olaRotation(-90.0f, 0.0f, 0.0f);
 
-glm::vec3 barconewScale(1.0f, 1.0f, 1.0f);
+glm::vec3 barconewScale(5.0f, 5.0f, 5.0f);
 glm::vec3 icebergChicoScale(25.0f, 25.0f, 25.0f);
 glm::vec3 icebergGrandeScale(12.0f, 12.0f, 12.0f);
 glm::vec3 igluScale(1.0f, 1.0f, 1.0f);
@@ -156,19 +156,19 @@ AnimatedModel* personaje;
 
 glm::vec3 leonMarinoPosition(-18.0f, 0.0f, 12.0f);
 glm::vec3 osoAPosition(-12.0f, 0.0f, 12.0f);
-glm::vec3 pexDoradoPosition(-6.0f, 0.0f, 12.0f);
+glm::vec3 pexDoradoPosition(27.0f, 5.0f, -40.0f);
 glm::vec3 bearPosition(0.0f, 0.0f, 12.0f);
-glm::vec3 cargoPosition(6.0f, 0.0f, 12.0f);
-glm::vec3 fishPosition(12.0f, 0.0f, 12.0f);
+glm::vec3 cargoPosition(170.0f, 2.0f, 12.0f);
+glm::vec3 fishPosition(0.0f, 20.0f, 0.0f);
 glm::vec3 gasPosition(-18.0f, 0.0f, 6.0f);
 glm::vec3 icebergAPosition(-25.0f, -1.0f, 25.0f);
 glm::vec3 icebergDPosition(15.0f, 0.0f, 15.0f);
-glm::vec3 oilPumpPosition(0.0f, 0.0f, 6.0f);
+glm::vec3 oilPumpPosition(-100.0f, 20.0f, 6.0f);
 glm::vec3 orcaPosition(6.0f, 0.0f, 6.0f);
-glm::vec3 pezPosition(12.0f, 0.0f, 6.0f);
+glm::vec3 pezPosition(-40.0f, 1.0f,10.0f);
 glm::vec3 pinguinoPosition(-18.0f, 0.0f, 0.0f);
 glm::vec3 renoPosition(-12.0f, 0.0f, 0.0f);
-glm::vec3 rigPosition(-6.0f, 0.0f, 0.0f);
+glm::vec3 rigPosition(-6.0f, -5.0f, 0.0f);
 glm::vec3 sealPosition(0.0f, 0.0f, 0.0f);
 glm::vec3 shipPosition(6.0f, 0.0f, 0.0f);
 glm::vec3 tanqueDerramadoPosition(12.0f, 0.0f, 0.0f);
@@ -176,21 +176,21 @@ glm::vec3 tanqueGrandePosition(-18.0f, 0.0f, -6.0f);
 glm::vec3 tanquesPosition(-12.0f, 0.0f, -6.0f);
 glm::vec3 titanicPosition(-6.0f, 0.0f, -6.0f);
 glm::vec3 wolfPosition(0.0f, 0.0f, -6.0f);
-glm::vec3 trabajadorAnimadoPosition(6.0f, 0.0f, -6.0f);
-glm::vec3 trabajadoraAnimadaPosition(12.0f, 0.0f, -6.0f);
+glm::vec3 trabajadorAnimadoPosition(24.0f, 3.0f, -6.0f);
+glm::vec3 trabajadoraAnimadaPosition(51.0f, 10.0f, -6.0f);
 
 glm::vec3 leonMarinoRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 osoARotation(0.0f, 0.0f, 0.0f);
-glm::vec3 pexDoradoRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 pexDoradoRotation(-45.0f, 0.0f, 0.0f);
 glm::vec3 bearRotation(0.0f, 0.0f, 0.0f);
-glm::vec3 cargoRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 cargoRotation(-90.0f, 0.0f, 65.0f);
 glm::vec3 fishRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 gasRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 icebergARotation(-90.0f, 0.0f, 0.0f);
 glm::vec3 icebergDRotation(-90.0f, 0.0f, 0.0f);
 glm::vec3 oilPumpRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 orcaRotation(0.0f, 0.0f, 0.0f);
-glm::vec3 pezRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 pezRotation(0.0f, -120.0f, 0.0f);
 glm::vec3 pinguinoRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 renoRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 rigRotation(0.0f, 0.0f, 0.0f);
@@ -202,7 +202,24 @@ glm::vec3 tanquesRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 titanicRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 wolfRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 trabajadorAnimadoRotation(0.0f, 0.0f, 0.0f);
-glm::vec3 trabajadoraAnimadaRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 trabajadoraAnimadaRotation(0.0f, 90.0f, 0.0f);
+
+bool wolfCelebrationActive = false;
+float wolfCelebrationTime = 0.0f;
+const float wolfCelebrationDuration = 0.9f;
+const float wolfCelebrationAngle = 8.0f;
+
+bool pinguinoDeathTargetDown = false;
+float pinguinoDeathOffsetY = 0.0f;
+const float pinguinoDeathOffsetDown = -20.0f;
+const float pinguinoDeathSlideSpeed = 5.0f;
+
+bool zorroBreathingActive = false;
+float zorroBreathingTime = 0.0f;
+float zorroBreathingScaleFactor = 1.0f;
+const float zorroBreathingCycleDuration = 0.32f;
+const int zorroBreathingCycles = 4;
+const float zorroBreathingScaleAmount = 0.035f;
 
 glm::vec3 leonMarinoScale(1.0f, 1.0f, 1.0f);
 glm::vec3 osoAScale(1.0f, 1.0f, 1.0f);
@@ -213,9 +230,9 @@ glm::vec3 fishScale(1.0f, 1.0f, 1.0f);
 glm::vec3 gasScale(1.0f, 1.0f, 1.0f);
 glm::vec3 icebergAScale(5.0f, 5.0f, 5.0f);
 glm::vec3 icebergDScale(1.0f, 1.0f, 1.0f);
-glm::vec3 oilPumpScale(1.0f, 1.0f, 1.0f);
+glm::vec3 oilPumpScale(20.0f, 20.0f, 20.0f);
 glm::vec3 orcaScale(1.0f, 1.0f, 1.0f);
-glm::vec3 pezScale(1.0f, 1.0f, 1.0f);
+glm::vec3 pezScale(0.01f, 0.01f, 0.01f);
 glm::vec3 pinguinoScale(1.0f, 1.0f, 1.0f);
 glm::vec3 renoScale(1.0f, 1.0f, 1.0f);
 glm::vec3 rigScale(1.0f, 1.0f, 1.0f);
@@ -268,6 +285,84 @@ glm::mat4 BuildModelMatrix(const glm::vec3& positionValue, const glm::vec3& rota
 	return model;
 }
 
+void StartWolfCelebration() {
+	wolfCelebrationActive = true;
+	wolfCelebrationTime = 0.0f;
+	wolfRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+}
+
+void UpdateWolfCelebration() {
+	if (!wolfCelebrationActive) {
+		return;
+	}
+
+	wolfCelebrationTime += deltaTime;
+	float progress = wolfCelebrationTime / wolfCelebrationDuration;
+
+	if (progress >= 1.0f) {
+		wolfRotation = glm::vec3(0.0f, 0.0f, 0.0f);
+		wolfCelebrationActive = false;
+		return;
+	}
+
+	float celebrationYaw = 0.0f;
+	if (progress < 0.33f) {
+		celebrationYaw = glm::mix(0.0f, -wolfCelebrationAngle, progress / 0.33f);
+	} else if (progress < 0.66f) {
+		celebrationYaw = glm::mix(-wolfCelebrationAngle, wolfCelebrationAngle, (progress - 0.33f) / 0.33f);
+	} else {
+		celebrationYaw = glm::mix(wolfCelebrationAngle, 0.0f, (progress - 0.66f) / 0.34f);
+	}
+
+	wolfRotation = glm::vec3(0.0f, celebrationYaw, 0.0f);
+}
+
+glm::vec3 GetPinguinoRenderPosition() {
+	return pinguinoPosition + glm::vec3(0.0f, pinguinoDeathOffsetY, 0.0f);
+}
+
+void UpdatePinguinoDeath() {
+	float targetOffsetY = pinguinoDeathTargetDown ? pinguinoDeathOffsetDown : 0.0f;
+	float slideStep = pinguinoDeathSlideSpeed * deltaTime;
+	pinguinoDeathOffsetY = glm::mix(pinguinoDeathOffsetY, targetOffsetY, glm::clamp(slideStep, 0.0f, 1.0f));
+
+	if (glm::abs(pinguinoDeathOffsetY - targetOffsetY) < 0.01f) {
+		pinguinoDeathOffsetY = targetOffsetY;
+	}
+}
+
+void StartZorroBreathing() {
+	zorroBreathingActive = true;
+	zorroBreathingTime = 0.0f;
+	zorroBreathingScaleFactor = 1.0f;
+}
+
+void UpdateZorroBreathing() {
+	if (!zorroBreathingActive) {
+		zorroBreathingScaleFactor = 1.0f;
+		return;
+	}
+
+	zorroBreathingTime += deltaTime;
+	float totalDuration = zorroBreathingCycleDuration * static_cast<float>(zorroBreathingCycles);
+	if (zorroBreathingTime >= totalDuration) {
+		zorroBreathingActive = false;
+		zorroBreathingScaleFactor = 1.0f;
+		return;
+	}
+
+	float cycleTime = fmod(zorroBreathingTime, zorroBreathingCycleDuration);
+	float halfCycle = zorroBreathingCycleDuration * 0.5f;
+	float pulseAmount = 0.0f;
+	if (cycleTime < halfCycle) {
+		pulseAmount = cycleTime / halfCycle;
+	} else {
+		pulseAmount = 1.0f - ((cycleTime - halfCycle) / halfCycle);
+	}
+
+	zorroBreathingScaleFactor = 1.0f + (zorroBreathingScaleAmount * glm::clamp(pulseAmount, 0.0f, 1.0f));
+}
+
 void TranslateSelectedModel(const glm::vec3& delta) {
 	switch (selectedModelIndex) {
 	case 0: barconewPosition += delta; break;
@@ -313,7 +408,7 @@ void UpdateModelMatrices() {
 	icebergChicoModel = BuildModelMatrix(icebergChicoPosition, icebergChicoRotation, icebergChicoScale);
 	icebergGrandeModel = BuildModelMatrix(icebergGrandePosition, icebergGrandeRotation, icebergGrandeScale);
 	igluModel = BuildModelMatrix(igluPosition, igluRotation, igluScale);
-	zorroModel = BuildModelMatrix(zorroPosition, zorroRotation, zorroScale);
+	zorroModel = BuildModelMatrix(zorroPosition, zorroRotation, zorroScale * glm::vec3(zorroBreathingScaleFactor));
 	olaModel = BuildModelMatrix(olaPosition, olaRotation, olaScale);
 	leonMarinoModel = BuildModelMatrix(leonMarinoPosition, leonMarinoRotation, leonMarinoScale);
 	osoAModel = BuildModelMatrix(osoAPosition, osoARotation, osoAScale);
@@ -327,7 +422,7 @@ void UpdateModelMatrices() {
 	oilPumpModel = BuildModelMatrix(oilPumpPosition, oilPumpRotation, oilPumpScale);
 	orcaModel = BuildModelMatrix(orcaPosition, orcaRotation, orcaScale);
 	pezModel = BuildModelMatrix(pezPosition, pezRotation, pezScale);
-	pinguinoModel = BuildModelMatrix(pinguinoPosition, pinguinoRotation, pinguinoScale);
+	pinguinoModel = BuildModelMatrix(GetPinguinoRenderPosition(), pinguinoRotation, pinguinoScale);
 	renoModel = BuildModelMatrix(renoPosition, renoRotation, renoScale);
 
 	// Matriz para el reno-controlable (jugador)
@@ -363,6 +458,7 @@ Material material01;
 
 float proceduralTime = 0.0f;
 float wavesTime = 0.0f;
+bool waveAnimationActive = true; // Toggle para animación de la ola
 
 // Audio
 ISoundEngine *SoundEngine = createIrrKlangDevice();
@@ -665,6 +761,9 @@ bool Update() {
 
 	// Procesa la entrada del teclado o mouse
 	processInput(window);
+	UpdateWolfCelebration();
+	UpdatePinguinoDeath();
+	UpdateZorroBreathing();
 
 	// Renderizado R - G - B - A
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
@@ -765,11 +864,7 @@ bool Update() {
 			basicPhongShader->setVec4("MaterialSpecularColor", material01.specular);
 			basicPhongShader->setFloat("transparency", material01.transparency);
 		}
-		/*
-
-		activeShader->setMat4("model", barconewModel);
-		barconew->Draw(*activeShader);
-		*/
+		
 		activeShader->setMat4("model", icebergChicoModel);
 		icebergChico->Draw(*activeShader);
 
@@ -787,26 +882,36 @@ bool Update() {
 		wavesShader->setMat4("view", view);
 		wavesShader->setMat4("model", olaModel);
 
+		// El color del agua cambia según el estado del ecosistema (F5/F6/F7)
+		glm::vec3 waveDarkColor(0.10f, 0.40f, 0.80f);
+		glm::vec3 waveLightColor(0.30f, 0.70f, 1.00f);
+		if (sceneMode == 1) {
+			waveDarkColor = glm::vec3(0.06f, 0.24f, 0.50f);
+			waveLightColor = glm::vec3(0.16f, 0.45f, 0.75f);
+		}
+		else if (sceneMode == 2) {
+			waveDarkColor = glm::vec3(0.02f, 0.05f, 0.08f);
+			waveLightColor = glm::vec3(0.08f, 0.14f, 0.20f);
+		}
+		wavesShader->setVec3("waterColorDark", waveDarkColor);
+		wavesShader->setVec3("waterColorLight", waveLightColor);
+
 		// parámatros de la ola
 		wavesShader->setFloat("time", wavesTime);
 		wavesShader->setFloat("radius", 2.0f);
-		wavesShader->setFloat("height", 2.0f); // amplitud del oleaje (menor = olas más bajas)
+		wavesShader->setFloat("height", 3.0f); // amplitud del oleaje (menor = olas más bajas)
 
 		ola->Draw(*wavesShader);
-		wavesTime += 0.01f; // avance del tiempo de animación (menor = movimiento más lento)
+		
+		// Actualizar tiempo de animación solo si la ola está animada
+		if (waveAnimationActive) {
+			wavesTime += 0.01f; // avance del tiempo de animación (menor = movimiento más lento)
+		}
 
 		// restore previously active shader
 		activeShader->use();
 
-		/*pez->UpdateAnimation(deltaTime);
-		dynamicShader->use();
-		dynamicShader->setMat4("projection", projection);
-		dynamicShader->setMat4("view", view);
-		dynamicShader->setMat4("model", pezModel);
-		dynamicShader->setMat4("gBones", MAX_RIGGING_BONES, pez->gBones);
-		pez->Draw(*dynamicShader);
-		// restore active shader
-		activeShader->use();*/
+		/*
 
 		/*
 		activeShader->setMat4("model", igluModel);
@@ -822,14 +927,12 @@ bool Update() {
 		activeShader->setMat4("model", osoAModel);
 		osoA->Draw(*activeShader);
 
-		activeShader->setMat4("model", pexDoradoModel);
-		pexDorado->Draw(*activeShader);
+		
 
 		activeShader->setMat4("model", bearModel);
 		bear->Draw(*activeShader);
 
-		activeShader->setMat4("model", cargoModel);
-		cargo->Draw(*activeShader);
+		
 
 		activeShader->setMat4("model", gasModel);
 		gas->Draw(*activeShader);*/
@@ -1048,12 +1151,12 @@ bool Update() {
 		// --- PINGUINO 1 ---
 		/*
 		// Posición: Cerca de X=-20, Z=10 | Escala: 0.15f (Mini para que combine con el iglú)
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f + pinguinoDeathOffsetY, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
 		pinguino->Draw(*activeShader);
 		*/
 		// PINGUINO 2 
 		// Posición: X=12.0, Z=21.0 | Escala: 0.18f
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f + pinguinoDeathOffsetY, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
 		pinguino->Draw(*activeShader);
 		
 		//Orca 
@@ -1115,7 +1218,7 @@ bool Update() {
 		activeShader->setMat4("model", BuildModelMatrix(
 			glm::vec3(-22.0f, 5.1f, 12.0f),
 			zorroRotation + glm::vec3(-90.0f, 0.0f, 90.0f),
-			glm::vec3(1.0f)
+			glm::vec3(1.0f) * zorroBreathingScaleFactor
 		));
 		zorro->Draw(*activeShader);
 
@@ -1140,12 +1243,12 @@ bool Update() {
 		// --- PINGÜINOS (En el desastre total ya no hay) ---
 		if (sceneMode == 0) {
 			// Pingüino 1 y 2 en modo saludable
-			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f + pinguinoDeathOffsetY, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
 			pinguino->Draw(*activeShader);
 		}
 		else if (sceneMode == 1) {
 			// En modo 1 solo queda uno, asustado
-			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
+			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f + pinguinoDeathOffsetY, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
 			pinguino->Draw(*activeShader);
 		}
 
@@ -1157,6 +1260,10 @@ bool Update() {
 
 			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-90.0f, 0.0f, 6.0f), tanquesRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(1.2f)));
 			tanques->Draw(*activeShader);
+
+			// Oil Pump
+			activeShader->setMat4("model", oilPumpModel);
+			oilPump->Draw(*activeShader);
 		}
 
 		// --- CONTAMINACIÓN NIVEL 2 (Plataforma Petrolera y Desastre) ---
@@ -1172,6 +1279,35 @@ bool Update() {
 			// Derrame de petróleo
 			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(90.0f, 0.0f, -20.0f), tanqueDerramadoRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(2.5f)));
 			tanqueDerramado->Draw(*activeShader);
+		}
+
+		if (sceneMode >= 1) {
+			// Carguero
+			activeShader->setMat4("model", cargoModel);
+			cargo->Draw(*activeShader);
+		}
+
+		if (sceneMode == 0){
+			// pesca
+			activeShader->setMat4("model", barconewModel);
+			barconew->Draw(*activeShader);
+
+			// peces
+			activeShader->setMat4("model", pexDoradoModel);
+			pexDorado->Draw(*activeShader);
+
+			/*activeShader->setMat4("model", fishModel);
+			fish->Draw(*activeShader);*/
+
+			pez->UpdateAnimation(deltaTime);
+			dynamicShader->use();
+			dynamicShader->setMat4("projection", projection);
+			dynamicShader->setMat4("view", view);
+			dynamicShader->setMat4("model", pezModel);
+			dynamicShader->setMat4("gBones", MAX_RIGGING_BONES, pez->gBones);
+			pez->Draw(*dynamicShader);
+			// restore active shader
+			activeShader->use();
 		}
 
 		// Iceberg Grande del fondo
@@ -1283,11 +1419,9 @@ bool Update() {
 
 		/*
 >>>>>>> 0330f11 (Adjust model positions and camera offsets)
-		activeShader->setMat4("model", oilPumpModel);
-		oilPump->Draw(*activeShader);
+		
 
-		activeShader->setMat4("model", fishModel);
-		fish->Draw(*activeShader);
+		
 
 		activeShader->setMat4("model", sealModel);
 		seal->Draw(*activeShader);
@@ -1420,6 +1554,33 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
 		SetSelectedModelIndex(4);
 
+	static bool eightKeyPressed = false;
+	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS && !eightKeyPressed) {
+		StartZorroBreathing();
+		eightKeyPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_RELEASE) {
+		eightKeyPressed = false;
+	}
+
+	static bool nineKeyPressed = false;
+	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_PRESS && !nineKeyPressed) {
+		pinguinoDeathTargetDown = !pinguinoDeathTargetDown;
+		nineKeyPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_9) == GLFW_RELEASE) {
+		nineKeyPressed = false;
+	}
+
+	static bool zeroKeyPressed = false;
+	if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS && !zeroKeyPressed) {
+		StartWolfCelebration();
+		zeroKeyPressed = true;
+	}
+	if (glfwGetKey(window, GLFW_KEY_0) == GLFW_RELEASE) {
+		zeroKeyPressed = false;
+	}
+
 	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
 		TranslateSelectedModel(glm::vec3(-0.02f, 0.0f, 0.0f));
 	if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
@@ -1514,6 +1675,18 @@ void processInput(GLFWwindow* window)
 		activeCamera = 0;
 	if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
 		activeCamera = 1;
+
+	// Toggle animación de la ola con la tecla P
+	static bool pKeyPressed = false;
+	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS && !pKeyPressed) {
+		waveAnimationActive = !waveAnimationActive;
+		pKeyPressed = true;
+		const char* waveState = waveAnimationActive ? "activa" : "estática";
+		std::cout << "Ola ahora: " << waveState << std::endl;
+	}
+	if (glfwGetKey(window, GLFW_KEY_P) == GLFW_RELEASE) {
+		pKeyPressed = false;
+	}
 	
 }
 
