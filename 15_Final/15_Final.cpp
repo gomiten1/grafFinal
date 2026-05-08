@@ -148,8 +148,8 @@ Model* tanqueGrande;
 Model* tanques;
 Model* titanic;
 Model* wolf;
-Model* trabajadorAnimado;
-Model* trabajadoraAnimada;
+AnimatedModel* trabajadorAnimado;
+AnimatedModel* trabajadoraAnimada;
 AnimatedModel* personaje;
 
 glm::vec3 leonMarinoPosition(-18.0f, 0.0f, 12.0f);
@@ -224,8 +224,8 @@ glm::vec3 tanqueGrandeScale(1.0f, 1.0f, 1.0f);
 glm::vec3 tanquesScale(1.0f, 1.0f, 1.0f);
 glm::vec3 titanicScale(1.0f, 1.0f, 1.0f);
 glm::vec3 wolfScale(1.0f, 1.0f, 1.0f);
-glm::vec3 trabajadorAnimadoScale(1.0f, 1.0f, 1.0f);
-glm::vec3 trabajadoraAnimadaScale(1.0f, 1.0f, 1.0f);
+glm::vec3 trabajadorAnimadoScale(0.035f, 0.035f, 0.035f);
+glm::vec3 trabajadoraAnimadaScale(0.035f, 0.035f, 0.035f);
 
 glm::mat4 leonMarinoModel = glm::mat4(1.0f);
 glm::mat4 osoAModel = glm::mat4(1.0f);
@@ -550,12 +550,12 @@ bool Start() {
 	personaje = new AnimatedModel("models/Bird flying.fbx");
 	loadedModels++;
 
-	std::cout << "Attempting to load: models/trabajadores/Trabajador_animado.fbx" << std::endl;
-	trabajadorAnimado = new Model("models/trabajadores/Trabajador.fbx");
+	std::cout << "Attempting to load: models/trabajadores/Trabajador.fbx (animado)" << std::endl;
+	trabajadorAnimado = new AnimatedModel("models/trabajadores/Trabajador.fbx");
 	loadedModels++;
 
-	std::cout << "Attempting to load: models/trabajadores/Trabajadora_animada.fbx" << std::endl;
-	trabajadoraAnimada = new Model("models/trabajadores/Trabajadora.fbx");
+	std::cout << "Attempting to load: models/trabajadores/Trabajadora.fbx (animada)" << std::endl;
+	trabajadoraAnimada = new AnimatedModel("models/trabajadores/Trabajadora.fbx");
 	loadedModels++;
 
 	std::cout << "Attempting to load: models/rig.fbx" << std::endl;
@@ -824,9 +824,6 @@ bool Update() {
 
 		activeShader->setMat4("model", cargoModel);
 		cargo->Draw(*activeShader);
-
-		activeShader->setMat4("model", fishModel);
-		fish->Draw(*activeShader);
 
 		activeShader->setMat4("model", gasModel);
 		gas->Draw(*activeShader);*/
@@ -1148,10 +1145,34 @@ bool Update() {
 			activeShader->use();
 		}
 
-		/*
+		trabajadorAnimado->UpdateAnimation(deltaTime);
+		dynamicShader->use();
+		dynamicShader->setMat4("projection", projection);
+		dynamicShader->setMat4("view", view);
+		dynamicShader->setMat4("model", trabajadorAnimadoModel);
+		dynamicShader->setMat4("gBones", MAX_RIGGING_BONES, trabajadorAnimado->gBones);
+		trabajadorAnimado->Draw(*dynamicShader);
+		activeShader->use();
+
+		trabajadoraAnimada->UpdateAnimation(deltaTime);
+		dynamicShader->use();
+		dynamicShader->setMat4("projection", projection);
+		dynamicShader->setMat4("view", view);
+		dynamicShader->setMat4("model", trabajadoraAnimadaModel);
+		dynamicShader->setMat4("gBones", MAX_RIGGING_BONES, trabajadoraAnimada->gBones);
+		trabajadoraAnimada->Draw(*dynamicShader);
+		activeShader->use();
+
 		activeShader->setMat4("model", oilPumpModel);
 		oilPump->Draw(*activeShader);
 
+		activeShader->setMat4("model", fishModel);
+		fish->Draw(*activeShader);
+
+		activeShader->setMat4("model", sealModel);
+		seal->Draw(*activeShader);
+
+		/*
 		activeShader->setMat4("model", orcaModel);
 		orca->Draw(*activeShader);
 
@@ -1173,9 +1194,6 @@ bool Update() {
 		activeShader->setMat4("model", rigModel);
 		rig->Draw(*activeShader);
 
-		activeShader->setMat4("model", sealModel);
-		seal->Draw(*activeShader);
-
 		activeShader->setMat4("model", shipModel);
 		ship->Draw(*activeShader);
 
@@ -1194,12 +1212,6 @@ bool Update() {
 		activeShader->setMat4("model", wolfModel);
 		wolf->Draw(*activeShader);
 
-		/*activeShader->setMat4("model", trabajadorAnimadoModel);
-		trabajadorAnimado->Draw(*activeShader);
-
-		activeShader->setMat4("model", trabajadoraAnimadaModel);
-		trabajadoraAnimada->Draw(*activeShader);
-		
 		*/
 	}
 
