@@ -1,6 +1,6 @@
 /*
 * 
-* 09 - Animación
+* 15 - Proyecto final
 */
 
 #include <iostream>
@@ -48,7 +48,7 @@ const unsigned int SCR_WIDTH = 1024;
 const unsigned int SCR_HEIGHT = 768;
 
 // Definición de cámara (posición en XYZ)
-Camera camera(glm::vec3(0.0f, 5.0f, 12.0f));
+Camera camera(glm::vec3(0.0f, 10.0f, 60.0f));
 Camera camera3rd(glm::vec3(0.0f, 0.0f, 0.0f));
 
 // Controladores para el movimiento del mouse
@@ -64,9 +64,14 @@ float elapsedTime = 0.0f;
 
 glm::vec3 position(0.0f,0.0f, 0.0f);
 glm::vec3 forwardView(0.0f, 0.0f, 1.0f);
-float     trdpersonOffset = 1.5f;
-float     scaleV = 0.025f;
-float     rotateCharacter = 0.0f;
+	// Distancia de la cámara a la posición del personaje
+	float     trdpersonOffset = 2.5f;
+	// Subir altura de la cámara en 4 unidades
+	float     trdpersonHeightOffset = 6.0f;
+	// Altura del personaje 
+	float     trdpersonCharacterYOffset = 4.3f;
+	float     scaleV = 0.025f; // legacy scalar kept for compatibility
+	float     rotateCharacter = 0.0f;
 
 // Shaders
 Shader *mLightsShader;        // Phong con múltiples luces
@@ -78,7 +83,7 @@ Shader *wavesShader;
 Shader *cubemapShader;
 Shader *dynamicShader;
 
-// Tipo de iluminación (0 = Phong MultiLights, 1 = Fresnel, 2 = Phong Simple)
+// Tipo de iluminación (0 = Phong MultiLights, 1 = Fresnel, 2 = Phong Simple, 3 = Phong + Fresnel)
 int lightingMode = 0;
 
 // Carga la información del modelo
@@ -90,8 +95,8 @@ Model* zorro;
 Model* ola;
 
 glm::vec3 barconewPosition(6.0f, 0.0f, 0.0f);
-glm::vec3 icebergChicoPosition(1.8f, 0.0f, 5.6f);
-glm::vec3 icebergGrandePosition(-4.8f, 0.0f, 3.5f);
+glm::vec3 icebergChicoPosition(60.0f, -2.0f, -20.0f);
+glm::vec3 icebergGrandePosition(-45.0f, -1.0f, -40.0f);
 glm::vec3 igluPosition(-4.8f, 0.0f, -3.5f);
 glm::vec3 zorroPosition(1.8f, 0.0f, -5.6f);
 glm::vec3 olaPosition(0.0f, 0.0f, 0.0f);
@@ -101,14 +106,14 @@ glm::vec3 icebergChicoRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 icebergGrandeRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 igluRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 zorroRotation(0.0f, 0.0f, 0.0f);
-glm::vec3 olaRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 olaRotation(-90.0f, 0.0f, 0.0f);
 
 glm::vec3 barconewScale(1.0f, 1.0f, 1.0f);
-glm::vec3 icebergChicoScale(1.0f, 1.0f, 1.0f);
-glm::vec3 icebergGrandeScale(1.0f, 1.0f, 1.0f);
+glm::vec3 icebergChicoScale(25.0f, 25.0f, 25.0f);
+glm::vec3 icebergGrandeScale(12.0f, 12.0f, 12.0f);
 glm::vec3 igluScale(1.0f, 1.0f, 1.0f);
 glm::vec3 zorroScale(1.0f, 1.0f, 1.0f);
-glm::vec3 olaScale(2.0f, 2.0f, 2.0f);
+glm::vec3 olaScale(20.0f, 20.0f, 20.0f);
 
 glm::mat4 barconewModel = glm::mat4(1.0f);
 glm::mat4 icebergChicoModel = glm::mat4(1.0f);
@@ -128,7 +133,7 @@ Model* icebergA;
 Model* icebergD;
 Model* oilPump;
 Model* orca;
-Model* pez;
+AnimatedModel* pez;
 Model* pinguino;
 Model* reno;
 Model* rig;
@@ -141,6 +146,7 @@ Model* titanic;
 Model* wolf;
 Model* trabajadorAnimado;
 Model* trabajadoraAnimada;
+Model* personaje;
 
 glm::vec3 leonMarinoPosition(-18.0f, 0.0f, 12.0f);
 glm::vec3 osoAPosition(-12.0f, 0.0f, 12.0f);
@@ -149,8 +155,8 @@ glm::vec3 bearPosition(0.0f, 0.0f, 12.0f);
 glm::vec3 cargoPosition(6.0f, 0.0f, 12.0f);
 glm::vec3 fishPosition(12.0f, 0.0f, 12.0f);
 glm::vec3 gasPosition(-18.0f, 0.0f, 6.0f);
-glm::vec3 icebergAPosition(-12.0f, 0.0f, 6.0f);
-glm::vec3 icebergDPosition(-6.0f, 0.0f, 6.0f);
+glm::vec3 icebergAPosition(-25.0f, -1.0f, 25.0f);
+glm::vec3 icebergDPosition(15.0f, 0.0f, 15.0f);
 glm::vec3 oilPumpPosition(0.0f, 0.0f, 6.0f);
 glm::vec3 orcaPosition(6.0f, 0.0f, 6.0f);
 glm::vec3 pezPosition(12.0f, 0.0f, 6.0f);
@@ -174,8 +180,8 @@ glm::vec3 bearRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 cargoRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 fishRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 gasRotation(0.0f, 0.0f, 0.0f);
-glm::vec3 icebergARotation(0.0f, 0.0f, 0.0f);
-glm::vec3 icebergDRotation(0.0f, 0.0f, 0.0f);
+glm::vec3 icebergARotation(-90.0f, 0.0f, 0.0f);
+glm::vec3 icebergDRotation(-90.0f, 0.0f, 0.0f);
 glm::vec3 oilPumpRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 orcaRotation(0.0f, 0.0f, 0.0f);
 glm::vec3 pezRotation(0.0f, 0.0f, 0.0f);
@@ -199,7 +205,7 @@ glm::vec3 bearScale(1.0f, 1.0f, 1.0f);
 glm::vec3 cargoScale(1.0f, 1.0f, 1.0f);
 glm::vec3 fishScale(1.0f, 1.0f, 1.0f);
 glm::vec3 gasScale(1.0f, 1.0f, 1.0f);
-glm::vec3 icebergAScale(1.0f, 1.0f, 1.0f);
+glm::vec3 icebergAScale(5.0f, 5.0f, 5.0f);
 glm::vec3 icebergDScale(1.0f, 1.0f, 1.0f);
 glm::vec3 oilPumpScale(1.0f, 1.0f, 1.0f);
 glm::vec3 orcaScale(1.0f, 1.0f, 1.0f);
@@ -242,6 +248,7 @@ glm::mat4 titanicModel = glm::mat4(1.0f);
 glm::mat4 wolfModel = glm::mat4(1.0f);
 glm::mat4 trabajadorAnimadoModel = glm::mat4(1.0f);
 glm::mat4 trabajadoraAnimadaModel = glm::mat4(1.0f);
+glm::mat4 personajePlayerModel = glm::mat4(1.0f);
 
 int selectedModelIndex = 0;
 
@@ -329,6 +336,7 @@ void UpdateModelMatrices() {
 	wolfModel = BuildModelMatrix(wolfPosition, wolfRotation, wolfScale);
 	trabajadorAnimadoModel = BuildModelMatrix(trabajadorAnimadoPosition, trabajadorAnimadoRotation, trabajadorAnimadoScale);
 	trabajadoraAnimadaModel = BuildModelMatrix(trabajadoraAnimadaPosition, trabajadoraAnimadaRotation, trabajadoraAnimadaScale);
+	personajePlayerModel = BuildModelMatrix(position + glm::vec3(0.0f, trdpersonCharacterYOffset, 0.0f), glm::vec3(0.0f, rotateCharacter, 0.0f), glm::vec3(0.01f, 0.01f, 0.01f));
 }
 
 float tradius = 10.0f;
@@ -495,7 +503,7 @@ bool Start() {
 	loadedModels++;
 
 	std::cout << "Attempting to load: models/pez.fbx" << std::endl;
-	pez = new Model("models/pez.fbx");
+	pez = new AnimatedModel("models/pez.fbx");
 	loadedModels++;
 
 	std::cout << "Attempting to load: models/pinguino.fbx" << std::endl;
@@ -534,13 +542,17 @@ bool Start() {
 	wolf = new Model("models/wolf.fbx");
 	loadedModels++;
 
-	/*std::cout << "Attempting to load: models/humanos/Trabajador_animado.fbx" << std::endl;
-	trabajadorAnimado = new Model("models/humanos/Trabajador_animado.fbx");
+	std::cout << "Attempting to load: models/trabajadores/personaje.fbx" << std::endl;
+	personaje = new Model("models/trabajadores/personaje.fbx");
 	loadedModels++;
 
-	std::cout << "Attempting to load: models/humanos/Trabajadora_animada.fbx" << std::endl;
-	trabajadoraAnimada = new Model("models/humanos/Trabajadora_animada.fbx");
-	loadedModels++;*/
+	std::cout << "Attempting to load: models/trabajadores/Trabajador_animado.fbx" << std::endl;
+	trabajadorAnimado = new Model("models/trabajadores/Trabajador.fbx");
+	loadedModels++;
+
+	std::cout << "Attempting to load: models/trabajadores/Trabajadora_animada.fbx" << std::endl;
+	trabajadoraAnimada = new Model("models/trabajadores/Trabajadora.fbx");
+	loadedModels++;
 
 	std::cout << "Attempting to load: models/rig.fbx" << std::endl;
 	rig = new Model("models/rig.fbx");
@@ -566,7 +578,7 @@ bool Start() {
 	mainCubeMap->loadCubemap(faces);
 
 	camera3rd.Position = position;
-	camera3rd.Position.y += 1.7f;
+	camera3rd.Position.y += trdpersonHeightOffset;
 	camera3rd.Position -= trdpersonOffset * forwardView;
 	camera3rd.Front = forwardView;
 
@@ -652,16 +664,19 @@ bool Update() {
 
 	glm::mat4 projection;
 	glm::mat4 view;
+	glm::vec3 eyePosition;
 
 	if (activeCamera) {
 		// Cámara en primera persona
 		projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 10000.0f);
 		view = camera.GetViewMatrix();
+		eyePosition = camera.Position;
 	}
 	else {
 		// cámara en tercera persona
 		projection = glm::perspective(glm::radians(camera3rd.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 10000.0f);
 		view = camera3rd.GetViewMatrix();
+		eyePosition = camera3rd.Position;
 	}
 
 	// Cubemap (fondo)
@@ -676,19 +691,19 @@ bool Update() {
 		
 		// Seleccionar shader según modo de iluminación
 		Shader* activeShader;
-		if (lightingMode == 0) {
-			activeShader = mLightsShader;
-		} else if (lightingMode == 1) {
+		if (lightingMode == 1) {
 			activeShader = fresnelShader;
-		} else {
+		} else if (lightingMode == 2) {
 			activeShader = basicPhongShader;
+		} else {
+			activeShader = mLightsShader;
 		}
 		activeShader->use();
 
 		activeShader->setMat4("projection", projection);
 		activeShader->setMat4("view", view);
 
-		if (lightingMode == 0) {
+		if (lightingMode == 0 || lightingMode == 3) {
 			// Configuración para Phong MultiLights
 			// Configuramos propiedades de fuentes de luz
 			mLightsShader->setInt("numLights", (int)gLights.size());
@@ -701,7 +716,7 @@ bool Update() {
 				SetLightUniformFloat(mLightsShader, "distance", i, gLights[i].distance);
 			}
 			
-			mLightsShader->setVec3("eye", camera.Position);
+			mLightsShader->setVec3("eye", eyePosition);
 
 			// Aplicamos propiedades materiales
 			mLightsShader->setVec4("MaterialAmbientColor", material01.ambient);
@@ -714,13 +729,15 @@ bool Update() {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, mainCubeMap->textureID);
 			fresnelShader->setInt("cubetex", 0);  // Texture unit 0
+			fresnelShader->setVec3("tintColor", glm::vec3(1.0f, 1.0f, 1.0f));
+			fresnelShader->setFloat("tintStrength", 0.0f);
 
 			// Configurar uniforms Fresnel una vez por frame
-			fresnelShader->setVec3("cameraPosition", camera.Position);
-			fresnelShader->setFloat("mRefractionRatio", 1.0f / 1.003f);  // Aire
+			fresnelShader->setVec3("cameraPosition", eyePosition);
+			fresnelShader->setFloat("mRefractionRatio", 1.0f / 1.333f);  // Agua / vidrio ligero
 			fresnelShader->setFloat("_Bias", 0.1f);
-			fresnelShader->setFloat("_Scale", 0.1f);
-			fresnelShader->setFloat("_Power", 1.0f);
+			fresnelShader->setFloat("_Scale", 0.15f);
+			fresnelShader->setFloat("_Power", 1.5f);
 		}
 		else {
 			// Configuración para Phong Simple (1 luz)
@@ -730,7 +747,7 @@ bool Update() {
 			basicPhongShader->setFloat("distance", gSimpleLight.distance);
 			basicPhongShader->setVec3("lightPosition", gSimpleLight.Position);
 			basicPhongShader->setVec3("lightDirection", gSimpleLight.Direction);
-			basicPhongShader->setVec3("eye", camera.Position);
+			basicPhongShader->setVec3("eye", eyePosition);
 
 			// Aplicamos propiedades materiales
 			basicPhongShader->setVec4("MaterialAmbientColor", material01.ambient);
@@ -738,22 +755,57 @@ bool Update() {
 			basicPhongShader->setVec4("MaterialSpecularColor", material01.specular);
 			basicPhongShader->setFloat("transparency", material01.transparency);
 		}
+		/*
 
 		activeShader->setMat4("model", barconewModel);
 		barconew->Draw(*activeShader);
-
+		*/
 		activeShader->setMat4("model", icebergChicoModel);
 		icebergChico->Draw(*activeShader);
 
 		activeShader->setMat4("model", icebergGrandeModel);
 		icebergGrande->Draw(*activeShader);
 
+		// Draw the wave mesh using the waves shader (procedural animation)
+		wavesShader->use();
+
+		// Activamos para objetos transparentes
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		wavesShader->setMat4("projection", projection);
+		wavesShader->setMat4("view", view);
+		wavesShader->setMat4("model", olaModel);
+
+		// parámatros de la ola
+		wavesShader->setFloat("time", wavesTime);
+		wavesShader->setFloat("radius", 2.0f);
+		wavesShader->setFloat("height", 5.0f);
+
+		ola->Draw(*wavesShader);
+		wavesTime += 0.01f;
+
+		// restore previously active shader
+		activeShader->use();
+
+		/*pez->UpdateAnimation(deltaTime);
+		dynamicShader->use();
+		dynamicShader->setMat4("projection", projection);
+		dynamicShader->setMat4("view", view);
+		dynamicShader->setMat4("model", pezModel);
+		dynamicShader->setMat4("gBones", MAX_RIGGING_BONES, pez->gBones);
+		pez->Draw(*dynamicShader);
+		// restore active shader
+		activeShader->use();*/
+
+		/*
 		activeShader->setMat4("model", igluModel);
 		iglu->Draw(*activeShader);
 
 		activeShader->setMat4("model", zorroModel);
 		zorro->Draw(*activeShader);
 
+		
 		activeShader->setMat4("model", leonMarinoModel);
 		leonMarino->Draw(*activeShader);
 
@@ -773,14 +825,320 @@ bool Update() {
 		fish->Draw(*activeShader);
 
 		activeShader->setMat4("model", gasModel);
-		gas->Draw(*activeShader);
+		gas->Draw(*activeShader);*/
 
-		activeShader->setMat4("model", icebergAModel);
-		icebergA->Draw(*activeShader);
+		// =========================================================
+		// CLÚSTER COMPACTO (Suelo de tipo D + Montaña tipo A)
+		// =========================================================
 
-		activeShader->setMat4("model", icebergDModel);
+		// Reducimos las distancias entre X y Z para que estén pegaditos
+		// Escala sugerida: 2.5f para que sea un clúster pequeño
+
+		// Placa 1: Frontal izquierda
+		glm::mat4 d1 = BuildModelMatrix(glm::vec3(-2.0f, 0.0f, 15.0f), icebergDRotation, glm::vec3(2.5f));
+		activeShader->setMat4("model", d1);
 		icebergD->Draw(*activeShader);
 
+		// Placa 2: Frontal derecha (solo 4 unidades de diferencia en X)
+		glm::mat4 d2 = BuildModelMatrix(glm::vec3(2.0f, -0.1f, 15.5f), icebergDRotation + glm::vec3(0, 15, 0), glm::vec3(2.2f));
+		activeShader->setMat4("model", d2);
+		icebergD->Draw(*activeShader);
+
+		// Placa 3: Trasera izquierda
+		glm::mat4 d3 = BuildModelMatrix(glm::vec3(-2.5f, -0.05f, 19.0f), icebergDRotation + glm::vec3(0, -10, 0), glm::vec3(2.8f));
+		activeShader->setMat4("model", d3);
+		icebergD->Draw(*activeShader);
+
+		// Placa 4: Trasera derecha
+		glm::mat4 d4 = BuildModelMatrix(glm::vec3(2.5f, 0.0f, 19.5f), icebergDRotation + glm::vec3(0, 45, 0), glm::vec3(2.3f));
+		activeShader->setMat4("model", d4);
+		icebergD->Draw(*activeShader);
+
+		// --- MONTAÑA CENTRAL COMPACTA (TIPO A) ---
+		// Ahora con escala 3.0 para que destaque pero no sea gigante
+		glm::mat4 aCentro = BuildModelMatrix(glm::vec3(0.0f, 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f));
+		activeShader->setMat4("model", aCentro);
+		icebergA->Draw(*activeShader);
+
+		// =========================================================
+		// PISO DE MOSAICOS PEQUEÑOS (Tipo D - Lado del Clúster)
+		// =========================================================
+
+		// Escala pequeña para que parezcan fragmentos de hielo
+		glm::vec3 miniScale(1.5f);
+
+		// Fila 1 (Alineada con el frente del clúster)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(8.0f, 0.0f, 15.0f), icebergDRotation + glm::vec3(0, 10, 0), miniScale));
+		icebergD->Draw(*activeShader);
+
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(12.0f, -0.05f, 15.0f), icebergDRotation + glm::vec3(0, 45, 0), miniScale));
+		icebergD->Draw(*activeShader);
+
+		// Fila 2 (Alineada con el centro del clúster)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(8.5f, 0.0f, 18.0f), icebergDRotation + glm::vec3(0, -20, 0), miniScale));
+		icebergD->Draw(*activeShader);
+
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(12.5f, -0.05f, 18.0f), icebergDRotation + glm::vec3(0, 75, 0), miniScale));
+		icebergD->Draw(*activeShader);
+
+		// Fila 3 (Alineada con la parte trasera del clúster)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(8.0f, -0.1f, 21.0f), icebergDRotation + glm::vec3(0, 130, 0), miniScale));
+		icebergD->Draw(*activeShader);
+
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(12.0f, 0.0f, 21.0f), icebergDRotation + glm::vec3(0, -5, 0), miniScale));
+		icebergD->Draw(*activeShader);
+
+		// =========================================================
+		// Mosaicos dispersos (Tipo D - Lado opuesto al clúster)	
+		// =========================================================
+
+
+		glm::mat4 dFugitivo = BuildModelMatrix(glm::vec3(-8.0f, -0.05f, 35.0f), icebergDRotation + glm::vec3(0, -25, 0), glm::vec3(1.2f));
+		activeShader->setMat4("model", dFugitivo);
+		icebergD->Draw(*activeShader);
+
+		glm::mat4 dMiniFragmento = BuildModelMatrix(glm::vec3(-11.0f, -0.02f, 36.0f), icebergDRotation, glm::vec3(0.6f));
+		activeShader->setMat4("model", dMiniFragmento);
+		icebergD->Draw(*activeShader);
+
+		// Hielito A
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-15.0f, 0.0f, 40.0f), icebergDRotation, glm::vec3(0.5f)));
+		icebergD->Draw(*activeShader);
+
+		// Hielito B
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-18.0f, -0.05f, 42.0f), icebergDRotation, glm::vec3(0.7f)));
+		icebergD->Draw(*activeShader);
+
+		// Hielito C
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-12.0f, 0.0f, 44.0f), icebergDRotation, glm::vec3(0.4f)));
+		icebergD->Draw(*activeShader);
+
+		// =========================================================
+		// RELLENO DE HORIZONTE (Entre Iceberg Grande y Chico)
+		// =========================================================
+	
+		// Mosaico de fondo 1 (Hacia la izquierda del centro)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-20.0f, -0.2f, -15.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(1.0f)));
+		icebergD->Draw(*activeShader);
+
+		// Mosaico de fondo 2 (Casi al centro pero más al fondo)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, -0.1f, -25.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(1.5f)));
+		icebergD->Draw(*activeShader);
+
+		// Mosaico de fondo 3 (Hacia la derecha del centro)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(20.0f, -0.2f, -18.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(1.2f)));
+		icebergD->Draw(*activeShader);
+
+		// Un hielito más pequeño para romper la simetría
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.0f, -0.1f, -10.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(1.5f)));
+		icebergD->Draw(*activeShader);
+
+		// =========================================================
+		// HORIZONTE LEJANO (Despegados de los originales)
+		// =========================================================
+
+		// Gigante al fondo izquierda: Lo mandamos más a la izquierda (-85) y más al fondo (-100)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-85.0f, -4.0f, -100.0f), glm::vec3(0, 180, 0), glm::vec3(18.0f)));
+		icebergGrande->Draw(*activeShader);
+
+		// Gigante al fondo derecha: Lo mandamos más a la derecha (90) y un poco menos al fondo (-85)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(90.0f, -3.5f, -85.0f), glm::vec3(0, 45, 0), glm::vec3(12.0f)));
+		icebergChico->Draw(*activeShader);
+
+		// =========================================================
+		// RELLENO DE HORIZONTE PROFUNDO (Atrás de los Gigantes)
+		// =========================================================
+
+		// Mosaico de fondo 1 (Lejos a la izquierda y muy al fondo)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-50.0f, -0.2f, -120.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(2.5f)));
+		icebergD->Draw(*activeShader);
+
+		// Mosaico de fondo 2 (Casi central pero al fondo del todo)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-10.0f, -0.1f, -140.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(3.0f)));
+		icebergD->Draw(*activeShader);
+
+		// Mosaico de fondo 3 (Hacia la derecha, entre los gigantes)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(40.0f, -0.2f, -115.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(2.8f)));
+		icebergD->Draw(*activeShader);
+
+		// Un hielito más pequeño para la silueta del fondo
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(15.0f, -0.1f, -130.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(2.0f)));
+		icebergD->Draw(*activeShader);
+
+		// =========================================================
+		// AGREGANDO ICEBERGS TIPO A (Elevaciones y Montañitas)
+		// =========================================================
+
+
+		// Posición: X = -15, Z = 20 | Escala: 3.5f
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-15.0f, 0.1f, 20.0f), icebergARotation + glm::vec3(0, 45, 0), glm::vec3(3.5f)));
+		icebergA->Draw(*activeShader);
+
+		// 2. Uno pequeño junto a los mosaicos pequeños de la derecha
+		// Posición: X = 18, Z = 16 | Escala: 2.0f
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(18.0f, 0.0f, 16.0f), icebergARotation + glm::vec3(0, -20, 0), glm::vec3(2.0f)));
+		icebergA->Draw(*activeShader);
+
+		// 3. Uno más "hundido" en el agua por el área del fondo
+		// Posición: X = 5, Z = 45 | Escala: 4.0f
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.0f, -0.5f, 45.0f), icebergARotation + glm::vec3(0, 90, 0), glm::vec3(4.0f)));
+		icebergA->Draw(*activeShader);
+
+		// 4. Un par de "picos" lejanos para acompañar el horizonte profundo
+		// Pico lejos izquierda
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-40.0f, -0.2f, -90.0f), icebergARotation, glm::vec3(6.0f)));
+		icebergA->Draw(*activeShader);
+
+		// Pico lejos derecha
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(45.0f, -0.2f, -110.0f), icebergARotation + glm::vec3(0, 180, 0), glm::vec3(5.5f)));
+		icebergA->Draw(*activeShader);
+
+		// =========================================================
+		// MICRO-IGLÚ 1
+		// =========================================================
+
+		// 1. Base de hielo (Tipo D) - Escala reducida a 2.0f
+		glm::mat4 baseIglu1 = BuildModelMatrix(glm::vec3(-20.0f, 0.0f, 10.0f), icebergDRotation, glm::vec3(2.0f));
+		activeShader->setMat4("model", baseIglu1);
+		icebergD->Draw(*activeShader);
+
+		// 2. El Iglú - Escala mini a 0.3f
+		// Lo subimos apenas un poquito (Y=0.05) para que se asiente bien
+		glm::mat4 iglu1ModelMat = BuildModelMatrix(glm::vec3(-20.0f, 0.05f, 10.0f), glm::vec3(-90.0f, 45.0f, 0.0f), glm::vec3(0.3f));
+		activeShader->setMat4("model", iglu1ModelMat);
+		iglu->Draw(*activeShader);
+
+
+		// =========================================================
+		// MICRO-IGLÚ 2 
+		// =========================================================
+
+		// 1. Base de hielo (Tipo D) - Escala 1.5f
+		glm::mat4 baseIglu2 = BuildModelMatrix(glm::vec3(25.0f, -0.1f, -5.0f), icebergDRotation, glm::vec3(1.5f));
+		activeShader->setMat4("model", baseIglu2);
+		icebergD->Draw(*activeShader);
+
+		// 2. El Iglú - Escala mini a 0.25f
+		glm::mat4 iglu2ModelMat = BuildModelMatrix(glm::vec3(25.0f, 0.02f, -5.0f), glm::vec3(-90.0f, -30.0f, 0.0f), glm::vec3(0.25f));
+		activeShader->setMat4("model", iglu2ModelMat);
+		iglu->Draw(*activeShader);
+
+		// =========================================================
+		// HABITANTES DEL ÁRTICO (Animales en sus posiciones)
+		// =========================================================
+
+		//oso tipo a: Lo colocamos cerca del clúster
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 22.0f, 17.5f), osoARotation + glm::vec3(90, 180, 90), glm::vec3(1.2f)));
+		osoA->Draw(*activeShader);
+
+		//
+		// Posición: X=8.0, Z=15.0 (encima de uno de los mosaicos pequeños de la derecha)
+		// Altura: Y=0.1 para que pise el hielo plano
+		// Rotación: -90 en X para acostarlo, y lo giramos un poco en Y para que vea al centro
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(15.0f, 13.0f, 15.0f), bearRotation + glm::vec3(-90.0f, -30.0f, 0.0f), glm::vec3(1.8f)));
+		bear->Draw(*activeShader);
+
+		// --- PINGUINO 1 ---
+
+		// Posición: Cerca de X=-20, Z=10 | Escala: 0.15f (Mini para que combine con el iglú)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
+		pinguino->Draw(*activeShader);
+
+		// PINGUINO 2 
+		// Posición: X=12.0, Z=21.0 | Escala: 0.18f
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
+		pinguino->Draw(*activeShader);
+
+		//Orca 
+
+		// Posición: X = 0 (centrada), Z = -15 (entre el centro y el fondo)
+		// Altura: Y = -1.5f (Importante: valor negativo para que esté sumergida)
+		// Rotación: -90 en X (para acostarla) y la giramos 90 en Y para que pase de lado
+		
+		// Calculamos el movimiento de balanceo
+		float balanceo = sin(glfwGetTime() * 1.5f) * 0.5f; // Sube y baja 0.5 unidades
+		float inclinacion = sin(glfwGetTime() * 0.8f) * 5.0f; // Se inclina 5 grados
+
+		activeShader->setMat4("model", BuildModelMatrix(
+			glm::vec3(10.0f, -6.0f + balanceo, -65.0f), // Aquí le sumamos el balanceo a Y
+			orcaRotation + glm::vec3(-90.0f + inclinacion, 0.0f, 0.0f), // Aquí inclinamos en X
+			glm::vec3(4.5f)
+		));
+		orca->Draw(*activeShader);
+
+	
+		// Lobo 1: Cerca del centro pero hacia la derecha (X = 10) y un poco más al fondo (Z = -125)
+		activeShader->setMat4("model", BuildModelMatrix(
+			glm::vec3(10.0f, 2.5f, -125.0f),
+			wolfRotation + glm::vec3(-90.0f, 0.0f, 0.0f),
+			glm::vec3(5.5f)
+		));
+		wolf->Draw(*activeShader);
+
+		// Lobo 2: Más a la derecha (X = 34) y un poco más al fondo (Z = -128)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(15.0f, 2.5f, -128.0f), wolfRotation + glm::vec3(-90.0f, 0.0f, 3.0f), glm::vec3(5.2f)));
+		wolf->Draw(*activeShader);
+
+		// Lobo 3: Más a la derecha (X = 34) y un poco más al fondo (Z = -128)
+		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(20.50f, 2.5f, -128.0f), wolfRotation + glm::vec3(-90.0f, 0.0f, -1.0f), glm::vec3(5.4f)));
+		wolf->Draw(*activeShader);
+
+		//Leon Marino 1
+		activeShader->setMat4("model", BuildModelMatrix(
+			glm::vec3(-50.0f, 4.95f, -130.0f),
+			leonMarinoRotation + glm::vec3(-90.0f, 0.0f, 0.0f),
+			glm::vec3(0.7f)
+		));
+		leonMarino->Draw(*activeShader);
+
+		// León Marino 2:
+		// Posición: X = -26, Z = -12 | Escala: 0.65f (un pelín más chico)
+		activeShader->setMat4("model", BuildModelMatrix(
+			glm::vec3(-10.0f, 5.05f, -130.0f),
+			leonMarinoRotation + glm::vec3(-90.0f, 0.0f, 90.0f),
+			glm::vec3(1.65f)
+		));
+		leonMarino->Draw(*activeShader);
+
+		if (lightingMode == 3) {
+			// Segundo pase: Fresnel sobre los icebergs, el resto queda en Phong
+			glDepthFunc(GL_LEQUAL);
+
+			fresnelShader->use();
+			fresnelShader->setMat4("projection", projection);
+			fresnelShader->setMat4("view", view);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, mainCubeMap->textureID);
+			fresnelShader->setInt("cubetex", 0);
+			fresnelShader->setVec3("cameraPosition", eyePosition);
+			fresnelShader->setFloat("mRefractionRatio", 1.0f / 1.31f);  // Hielo
+			fresnelShader->setFloat("_Bias", 0.08f);
+			fresnelShader->setFloat("_Scale", 0.22f);
+			fresnelShader->setFloat("_Power", 2.0f);
+			fresnelShader->setVec3("tintColor", glm::vec3(0.72f, 0.86f, 1.0f));
+			fresnelShader->setFloat("tintStrength", 0.22f);
+
+			fresnelShader->setMat4("model", icebergChicoModel);
+			icebergChico->Draw(*fresnelShader);
+
+			fresnelShader->setMat4("model", icebergGrandeModel);
+			icebergGrande->Draw(*fresnelShader);
+
+			fresnelShader->setMat4("model", BuildModelMatrix(glm::vec3(-20.0f, -0.2f, 15.0f), icebergDRotation, glm::vec3(2.5f)));
+			icebergD->Draw(*fresnelShader);
+
+			fresnelShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f)));
+			icebergA->Draw(*fresnelShader);
+
+			glDepthFunc(GL_LESS);
+		}
+
+		if (!activeCamera) {
+			activeShader->setMat4("model", personajePlayerModel);
+			personaje->Draw(*activeShader);
+		}
+
+		/*
 		activeShader->setMat4("model", oilPumpModel);
 		oilPump->Draw(*activeShader);
 
@@ -789,6 +1147,8 @@ bool Update() {
 
 		activeShader->setMat4("model", pezModel);
 		pez->Draw(*activeShader);
+
+		
 
 		activeShader->setMat4("model", pinguinoModel);
 		pinguino->Draw(*activeShader);
@@ -828,38 +1188,9 @@ bool Update() {
 		trabajadorAnimado->Draw(*activeShader);
 
 		activeShader->setMat4("model", trabajadoraAnimadaModel);
-		trabajadoraAnimada->Draw(*activeShader);*/
-	}
-
-	// Renderizar la ola animada con shader de ondas
-	{
-		// Activamos el shader de Phong
-		wavesShader->use();
-
-		// Activamos para objetos transparentes
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		// Aplicamos transformaciones de proyección y cámara
-		wavesShader->setMat4("projection", projection);
-		wavesShader->setMat4("view", view);
-
-		// Aplicamos transformaciones del modelo
-		glm::mat4 waveModel = glm::mat4(1.0f);
-		waveModel = glm::translate(waveModel, olaPosition);
-		waveModel = glm::rotate(waveModel, glm::radians(olaRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-		waveModel = glm::rotate(waveModel, glm::radians(olaRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-		waveModel = glm::rotate(waveModel, glm::radians(olaRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
-		waveModel = glm::scale(waveModel, olaScale);
-
-		wavesShader->setMat4("model", waveModel);
-
-		wavesShader->setFloat("time", wavesTime);
-		wavesShader->setFloat("radius", 5.0f);
-		wavesShader->setFloat("height", 5.0f);
-
-		ola->Draw(*wavesShader);
-		wavesTime += 0.01f;
+		trabajadoraAnimada->Draw(*activeShader);
+		
+		*/
 	}
 
 	glUseProgram(0);
@@ -881,11 +1212,12 @@ void processInput(GLFWwindow* window)
 	{
 		if (activeCamera) camera.ProcessKeyboard(FORWARD, deltaTime);
 		else {
-			// Move player forward in third-person
-			position = position + scaleV * forwardView;
+			// Move player forward in third-person using same speed scaling as first-person
+			float moveStep = camera.MovementSpeed * deltaTime;
+			position = position + moveStep * forwardView;
 			camera3rd.Front = forwardView;
 			camera3rd.Position = position;
-			camera3rd.Position.y += 1.7f;
+			camera3rd.Position.y += trdpersonHeightOffset;
 			camera3rd.Position -= trdpersonOffset * forwardView;
 		}
 	}
@@ -893,10 +1225,11 @@ void processInput(GLFWwindow* window)
 	{
 		if (activeCamera) camera.ProcessKeyboard(BACKWARD, deltaTime);
 		else {
-			position = position - scaleV * forwardView;
+			float moveStep = camera.MovementSpeed * deltaTime;
+			position = position - moveStep * forwardView;
 			camera3rd.Front = forwardView;
 			camera3rd.Position = position;
-			camera3rd.Position.y += 1.7f;
+			camera3rd.Position.y += trdpersonHeightOffset;
 			camera3rd.Position -= trdpersonOffset * forwardView;
 		}
 	}
@@ -904,12 +1237,13 @@ void processInput(GLFWwindow* window)
 	{
 		if (activeCamera) camera.ProcessKeyboard(LEFT, deltaTime);
 		else {
-			// Strafe left for player
+			// Strafe left for player (frame-rate independent)
 			glm::vec3 right = glm::normalize(glm::cross(forwardView, glm::vec3(0.0f,1.0f,0.0f)));
 			glm::vec3 left = -right;
-			position += scaleV * left;
+			float moveStep = camera.MovementSpeed * deltaTime;
+			position += moveStep * left;
 			camera3rd.Position = position;
-			camera3rd.Position.y += 1.7f;
+			camera3rd.Position.y += trdpersonHeightOffset;
 			camera3rd.Position -= trdpersonOffset * forwardView;
 		}
 	}
@@ -917,11 +1251,12 @@ void processInput(GLFWwindow* window)
 	{
 		if (activeCamera) camera.ProcessKeyboard(RIGHT, deltaTime);
 		else {
-			// Strafe right for player
+			// Strafe right for player (frame-rate independent)
 			glm::vec3 right = glm::normalize(glm::cross(forwardView, glm::vec3(0.0f,1.0f,0.0f)));
-			position += scaleV * right;
+			float moveStep = camera.MovementSpeed * deltaTime;
+			position += moveStep * right;
 			camera3rd.Position = position;
-			camera3rd.Position.y += 1.7f;
+			camera3rd.Position.y += trdpersonHeightOffset;
 			camera3rd.Position -= trdpersonOffset * forwardView;
 		}
 	}
@@ -967,9 +1302,9 @@ void processInput(GLFWwindow* window)
 	// Cambiar tipo de iluminación (L = Lighting)
 	static bool lKeyPressed = false;
 	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS && !lKeyPressed) {
-		lightingMode = (lightingMode + 1) % 3;
+		lightingMode = (lightingMode + 1) % 4;
 		lKeyPressed = true;
-		const char* modeNames[] = { "Phong MultiLights", "Fresnel", "Phong Simple" };
+		const char* modeNames[] = { "Phong MultiLights", "Fresnel", "Phong Simple", "Phong + Fresnel" };
 		std::cout << "Lighting mode changed to: " << modeNames[lightingMode] << std::endl;
 	}
 	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_RELEASE) {
@@ -979,24 +1314,28 @@ void processInput(GLFWwindow* window)
 	// Character movement
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
 
-		position = position + scaleV * forwardView;
+		float moveStep = camera.MovementSpeed * deltaTime;
+		position = position + moveStep * forwardView;
 		camera3rd.Front = forwardView;
 		camera3rd.ProcessKeyboard(FORWARD, deltaTime);
 		camera3rd.Position = position;
-		camera3rd.Position.y += 1.7f;
+		camera3rd.Position.y += trdpersonHeightOffset;
 		camera3rd.Position -= trdpersonOffset * forwardView;
 
 	}
 	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-		position = position - scaleV * forwardView;
+		float moveStep = camera.MovementSpeed * deltaTime;
+		position = position - moveStep * forwardView;
 		camera3rd.Front = forwardView;
 		camera3rd.ProcessKeyboard(BACKWARD, deltaTime);
 		camera3rd.Position = position;
-		camera3rd.Position.y += 1.7f;
+		camera3rd.Position.y += trdpersonHeightOffset;
 		camera3rd.Position -= trdpersonOffset * forwardView;
 	}
 	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-		rotateCharacter += 0.5f;
+		// make rotation frame-rate independent and proportional to mouse sensitivity
+		float rotationSpeed = camera.MouseSensitivity * 100.0f * deltaTime;
+		rotateCharacter += rotationSpeed;
 
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::rotate(model, glm::radians(rotateCharacter), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -1006,11 +1345,12 @@ void processInput(GLFWwindow* window)
 
 		camera3rd.Front = forwardView;
 		camera3rd.Position = position;
-		camera3rd.Position.y += 1.7f;
+		camera3rd.Position.y += trdpersonHeightOffset;
 		camera3rd.Position -= trdpersonOffset * forwardView;
 	}
 	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-		rotateCharacter -= 0.5f;
+		float rotationSpeed = camera.MouseSensitivity * 100.0f * deltaTime;
+		rotateCharacter -= rotationSpeed;
 
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::rotate(model, glm::radians(rotateCharacter), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -1020,7 +1360,7 @@ void processInput(GLFWwindow* window)
 
 		camera3rd.Front = forwardView;
 		camera3rd.Position = position;
-		camera3rd.Position.y += 1.7f;
+		camera3rd.Position.y += trdpersonHeightOffset;
 		camera3rd.Position -= trdpersonOffset * forwardView;
 	}
 
@@ -1059,8 +1399,8 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	}
 	else {
 		// Rotate the character horizontally with mouse in 3rd person
-		float sensitivity = 0.1f;
-		rotateCharacter += xoffset * sensitivity;
+		// Use same effective sensitivity as the Camera class
+		rotateCharacter += xoffset * camera.MouseSensitivity;
 
 		glm::mat4 model = glm::mat4(1.0f);
 		model = glm::rotate(model, glm::radians(rotateCharacter), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -1070,7 +1410,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 		camera3rd.Front = forwardView;
 		camera3rd.Position = position;
-		camera3rd.Position.y += 1.7f;
+		camera3rd.Position.y += trdpersonHeightOffset;
 		camera3rd.Position -= trdpersonOffset * forwardView;
 	}
 }
