@@ -113,7 +113,7 @@ glm::vec3 icebergChicoScale(25.0f, 25.0f, 25.0f);
 glm::vec3 icebergGrandeScale(12.0f, 12.0f, 12.0f);
 glm::vec3 igluScale(1.0f, 1.0f, 1.0f);
 glm::vec3 zorroScale(1.0f, 1.0f, 1.0f);
-glm::vec3 olaScale(20.0f, 20.0f, 20.0f);
+glm::vec3 olaScale(50.0f, 50.0f, 50.0f);
 
 glm::mat4 barconewModel = glm::mat4(1.0f);
 glm::mat4 icebergChicoModel = glm::mat4(1.0f);
@@ -585,23 +585,23 @@ bool Start() {
 	// Lights configuration
 	
 	Light light01;
-	light01.Position = glm::vec3(5.0f, 2.0f, 5.0f);
-	light01.Color = glm::vec4(0.2f, 0.0f, 0.0f, 1.0f);
+	light01.Position = glm::vec3(5.0f, 3.0f, 5.0f);
+	light01.Color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
 	gLights.push_back(light01);
 
 	Light light02;
-	light02.Position = glm::vec3(-5.0f, 2.0f, 5.0f);
-	light02.Color = glm::vec4(0.0f, 0.2f, 0.0f, 1.0f);
+	light02.Position = glm::vec3(-5.0f, 3.0f, 5.0f);
+	light02.Color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f);
 	gLights.push_back(light02);
 
 	Light light03;
-	light03.Position = glm::vec3(5.0f, 2.0f, -5.0f);
-	light03.Color = glm::vec4(0.0f, 0.0f, 0.2f, 1.0f);
+	light03.Position = glm::vec3(5.0f, 3.0f, -5.0f);
+	light03.Color = glm::vec4(0.15f, 0.15f, 0.15f, 1.0f);
 	gLights.push_back(light03);
 
 	Light light04;
-	light04.Position = glm::vec3(-5.0f, 2.0f, -5.0f);
-	light04.Color = glm::vec4(0.2f, 0.2f, 0.0f, 1.0f);
+	light04.Position = glm::vec3(-5.0f, 3.0f, -5.0f);
+	light04.Color = glm::vec4(0.15f, 0.15f, 0.15f, 1.0f);
 	gLights.push_back(light04);
 	
 	// Configure simple light for BasicPhongShader mode
@@ -780,10 +780,10 @@ bool Update() {
 		// parámatros de la ola
 		wavesShader->setFloat("time", wavesTime);
 		wavesShader->setFloat("radius", 2.0f);
-		wavesShader->setFloat("height", 5.0f);
+		wavesShader->setFloat("height", 2.0f); // amplitud del oleaje (menor = olas más bajas)
 
 		ola->Draw(*wavesShader);
-		wavesTime += 0.01f;
+		wavesTime += 0.01f; // avance del tiempo de animación (menor = movimiento más lento)
 
 		// restore previously active shader
 		activeShader->use();
