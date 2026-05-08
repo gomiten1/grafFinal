@@ -65,11 +65,15 @@ float elapsedTime = 0.0f;
 glm::vec3 position(0.0f,0.0f, 0.0f);
 glm::vec3 forwardView(0.0f, 0.0f, 1.0f);
 	// Distancia de la cámara a la posición del personaje
-	float     trdpersonOffset = 2.5f;
+	float     trdpersonOffset = 10.0f;
 	// Subir altura de la cámara en 4 unidades
 	float     trdpersonHeightOffset = 6.0f;
 	// Altura del personaje 
 	float     trdpersonCharacterYOffset = 4.3f;
+	// Escala del jugador en 3ª persona (Mixamo + skinning; sube si es muy pequeño)
+	glm::vec3 playerCharacterScale(0.01f, 0.01f, 0.01f);
+	// El FBX del ave mira hacia la cámara; +180° en Y alinea espalda con la dirección de marcha (ajusta si tu export es distinto)
+	const float playerCharacterYawOffsetDeg = 180.0f;
 	float     scaleV = 0.025f; // legacy scalar kept for compatibility
 	float     rotateCharacter = 0.0f;
 
@@ -146,7 +150,7 @@ Model* titanic;
 Model* wolf;
 Model* trabajadorAnimado;
 Model* trabajadoraAnimada;
-Model* personaje;
+AnimatedModel* personaje;
 
 glm::vec3 leonMarinoPosition(-18.0f, 0.0f, 12.0f);
 glm::vec3 osoAPosition(-12.0f, 0.0f, 12.0f);
@@ -336,7 +340,7 @@ void UpdateModelMatrices() {
 	wolfModel = BuildModelMatrix(wolfPosition, wolfRotation, wolfScale);
 	trabajadorAnimadoModel = BuildModelMatrix(trabajadorAnimadoPosition, trabajadorAnimadoRotation, trabajadorAnimadoScale);
 	trabajadoraAnimadaModel = BuildModelMatrix(trabajadoraAnimadaPosition, trabajadoraAnimadaRotation, trabajadoraAnimadaScale);
-	personajePlayerModel = BuildModelMatrix(position + glm::vec3(0.0f, trdpersonCharacterYOffset, 0.0f), glm::vec3(0.0f, rotateCharacter, 0.0f), glm::vec3(0.01f, 0.01f, 0.01f));
+	personajePlayerModel = BuildModelMatrix(position + glm::vec3(0.0f, trdpersonCharacterYOffset, 0.0f), glm::vec3(0.0f, rotateCharacter + playerCharacterYawOffsetDeg, 0.0f), playerCharacterScale);
 }
 
 float tradius = 10.0f;
@@ -362,7 +366,7 @@ float wavesTime = 0.0f;
 ISoundEngine *SoundEngine = createIrrKlangDevice();
 
 // selección de cámara
-bool    activeCamera = 1; // activamos la primera cámara
+bool    activeCamera = 0; // 0 = tercera persona (se dibuja el jugador); F2 = primera persona
 
 // Entrada a función principal
 int main()
@@ -542,8 +546,8 @@ bool Start() {
 	wolf = new Model("models/wolf.fbx");
 	loadedModels++;
 
-	std::cout << "Attempting to load: models/trabajadores/personaje.fbx" << std::endl;
-	personaje = new Model("models/trabajadores/personaje.fbx");
+	std::cout << "Attempting to load: models/Bird flying.fbx" << std::endl;
+	personaje = new AnimatedModel("models/Bird flying.fbx");
 	loadedModels++;
 
 	std::cout << "Attempting to load: models/trabajadores/Trabajador_animado.fbx" << std::endl;
@@ -1134,8 +1138,14 @@ bool Update() {
 		}
 
 		if (!activeCamera) {
-			activeShader->setMat4("model", personajePlayerModel);
-			personaje->Draw(*activeShader);
+			personaje->UpdateAnimation(deltaTime);
+			dynamicShader->use();
+			dynamicShader->setMat4("projection", projection);
+			dynamicShader->setMat4("view", view);
+			dynamicShader->setMat4("model", personajePlayerModel);
+			dynamicShader->setMat4("gBones", MAX_RIGGING_BONES, personaje->gBones);
+			personaje->Draw(*dynamicShader);
+			activeShader->use();
 		}
 
 		/*
