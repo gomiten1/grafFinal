@@ -115,6 +115,80 @@ public:
 
     }
 
+    // Cielo azul → grisáceo según pollutionGray (0 = limpio, 1 = máxima contaminación)
+    void loadProceduralSkyCubemap(int faceSize = 128, float pollutionGray = 0.0f)
+    {
+        pollutionGray = glm::clamp(pollutionGray, 0.0f, 1.0f);
+
+        const int w = faceSize;
+        const int h = faceSize;
+        std::vector<unsigned char> faceData((size_t)w * (size_t)h * 3);
+
+        auto skyRgb = [pollutionGray](const glm::vec3& dir) -> glm::vec3 {
+            const glm::vec3 d = glm::normalize(dir);
+            const glm::vec3 zenith(0.52f, 0.78f, 0.98f);
+            const glm::vec3 horizon(0.38f, 0.62f, 0.88f);
+            const glm::vec3 nadir(0.06f, 0.12f, 0.26f);
+            glm::vec3 col;
+            if (d.y >= 0.0f) {
+                col = glm::mix(horizon, zenith, powf(d.y, 0.55f));
+            }
+            else {
+                col = glm::mix(horizon, nadir, powf(-d.y, 0.75f));
+            }
+
+            const glm::vec3 grayZenith(0.58f, 0.60f, 0.63f);
+            const glm::vec3 grayHorizon(0.45f, 0.47f, 0.49f);
+            const glm::vec3 grayNadir(0.24f, 0.25f, 0.27f);
+            glm::vec3 smog;
+            if (d.y >= 0.0f) {
+                smog = glm::mix(grayHorizon, grayZenith, powf(d.y, 0.55f));
+            }
+            else {
+                smog = glm::mix(grayHorizon, grayNadir, powf(-d.y, 0.75f));
+            }
+            return glm::mix(col, smog, pollutionGray);
+        };
+
+        auto dirForFace = [](unsigned int face, float u, float v) -> glm::vec3 {
+            switch (face) {
+            case 0: return glm::vec3( 1.0f, -v, -u);
+            case 1: return glm::vec3(-1.0f, -v,  u);
+            case 2: return glm::vec3( u,  1.0f,  v);
+            case 3: return glm::vec3( u, -1.0f, -v);
+            case 4: return glm::vec3( u, -v,  1.0f);
+            default: return glm::vec3(-u, -v, -1.0f);
+            }
+        };
+
+        if (textureID == 0) {
+            glGenTextures(1, &textureID);
+        }
+        glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+        for (unsigned int face = 0; face < 6; ++face) {
+            for (int y = 0; y < h; ++y) {
+                for (int x = 0; x < w; ++x) {
+                    const float u = ((x + 0.5f) / (float)w) * 2.0f - 1.0f;
+                    const float v = ((y + 0.5f) / (float)h) * 2.0f - 1.0f;
+                    const glm::vec3 rgbF = skyRgb(dirForFace(face, u, v)) * 255.0f;
+                    const size_t i = ((size_t)y * (size_t)w + (size_t)x) * 3;
+                    faceData[i + 0] = (unsigned char)glm::clamp(rgbF.r, 0.0f, 255.0f);
+                    faceData[i + 1] = (unsigned char)glm::clamp(rgbF.g, 0.0f, 255.0f);
+                    faceData[i + 2] = (unsigned char)glm::clamp(rgbF.b, 0.0f, 255.0f);
+                }
+            }
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
+                0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, faceData.data());
+        }
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    }
+
     void drawCubeMap(Shader &shad, glm::mat4 &projection, glm::mat4 &view) {
         
         glUseProgram(0);

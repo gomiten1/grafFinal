@@ -41,6 +41,13 @@ void UpdatePollutionGameplay();
 void DrawActiveOilPumps(Shader& shader);
 void DrawSceneIcebergs(Shader& shader, float derretimiento);
 void DrawSceneIcebergsFresnel(Shader& shader, float derretimiento);
+void InitIceDiscMesh();
+void DrawIceDisc(Shader& shader, int lightingMode, const glm::mat4& projection, const glm::mat4& view, float derretimiento);
+void DrawIceDiscRingLargeIcebergs(Shader& shader, float derretimiento, int& slot);
+void DrawIceDiscScatteredHummocks(Shader& shader, float derretimiento, int& slot);
+void DrawCenterIglus(Shader& shader, float derretimiento);
+void DrawCenterLandWildlife(Shader& shader, float derretimiento);
+void DrawOpenWaterSwimmers(Shader& shader, Shader& skinShader, const glm::mat4& projection, const glm::mat4& view, float deltaTime);
 
 // Definición de callbacks
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -52,11 +59,13 @@ void processInput(GLFWwindow *window);
 GLFWwindow* window;
 // 0 = Saludable, 1 = Contaminación inicial, 2 = Desastre industrial
 int sceneMode = 0;
+bool activeCamera = false; // false = tercera persona; F2 = primera persona
 
 Material material01;
 
 // --- Sistema dinámico de contaminación (extractores + derretimiento de icebergs) ---
 const float kOilPumpSpawnInterval = 10.0f;
+const float kOilPumpFirstSpawnDelay = 10.0f;
 const float kIcebergMeltInterval = 10.0f;
 const int   kPumpsForTransition = 3;
 const int   kPumpsForDisaster = 8; // 3 + 5 adicionales
@@ -71,10 +80,13 @@ struct PlacedOilPump {
 
 std::vector<PlacedOilPump> activeOilPumps;
 std::vector<bool> icebergSlotVisible;
-float oilPumpSpawnTimer = 0.0f;
+std::vector<float> icebergSlotDistances;
+static double sOilPumpClockOrigin = -1.0;
+static double sOilPumpLastSpawnWall = -1.0;
 float icebergMeltTimer = 0.0f;
 int oilPumpSpawnCursor = 0;
 bool pollutionGameplayInitialized = false;
+static float gSkyPollutionApplied = -1.0f;
 
 static const glm::vec3 kOilPumpSpawnPoints[] = {
 	glm::vec3(30.0f, 0.5f, 10.0f),
@@ -91,6 +103,34 @@ static const glm::vec3 kOilPumpSpawnPoints[] = {
 	glm::vec3(15.0f, 0.5f, 18.0f),
 };
 static const int kOilPumpSpawnPointCount = (int)(sizeof(kOilPumpSpawnPoints) / sizeof(kOilPumpSpawnPoints[0]));
+
+// Disco de hielo plano (radio = kIceDiscDiameterFactor * olaScale.x; 6.0 ≈ 10× el tamaño previo de 0.6)
+static const float kIceDiscDiameterFactor = 4.0f; // 10× el diámetro anterior (0.6 → 6.0)
+static const float kIceDiscThickness = 0.45f;
+static const float kIceDiscSurfaceY = 1.85f; // por encima del oleaje
+static const int kClassicIcebergSlotCount = 36;
+static const int kDiscRingLargeSlotCount = 12;
+static const int kScatteredHummockSlotCount = 20;
+static const int kTotalIcebergSlots = kClassicIcebergSlotCount + kDiscRingLargeSlotCount + kScatteredHummockSlotCount;
+static float gIceDiscLayoutRadius = 30.0f; // fijo para icebergs/animales (no se encoge con contaminación)
+
+static unsigned int iceDiscVAO = 0;
+static unsigned int iceDiscVBO = 0;
+static unsigned int iceDiscEBO = 0;
+static GLsizei iceDiscIndexCount = 0;
+static unsigned int iceDiscWhiteTex = 0;
+static Material iceDiscSavedMaterial;
+
+static float GetPollutionBlend();
+static glm::vec3 IceDiscSurfacePos(float angleDeg, float radiusFrac, float yOnIce = 0.0f);
+static float WildlifeDistXZ(const glm::vec3& pos);
+static bool IsWildlifeVisibleAtPos(const glm::vec3& pos);
+static float WildlifeExtraSinkAtPos(const glm::vec3& pos);
+static void RecordIcebergSlotDistance(int slotIndex, const glm::vec3& worldPos);
+static void SyncIcebergSlotsToPollution();
+static void UpdateEnvironmentForPollution();
+static void UpdateIceDiscLayoutRadius();
+static float GetIceDiscDrawScale();
 
 // Tamaño en pixeles de la ventana
 const unsigned int SCR_WIDTH = 1024;
@@ -333,17 +373,22 @@ glm::mat4 BuildModelMatrix(const glm::vec3& positionValue, const glm::vec3& rota
 }
 
 void InitPollutionGameplay() {
-	icebergSlotVisible.assign(36, true);
+	// 36 clásicos + 12 grandes en el borde del disco + 20 mini en el disco
+	icebergSlotVisible.assign(kTotalIcebergSlots, true);
+	icebergSlotDistances.assign(kTotalIcebergSlots, 0.0f);
 	activeOilPumps.clear();
-	oilPumpSpawnTimer = 0.0f;
+	sOilPumpClockOrigin = -1.0;
+	sOilPumpLastSpawnWall = -1.0;
 	icebergMeltTimer = 0.0f;
 	oilPumpSpawnCursor = 0;
 	sceneMode = 0;
+	gSkyPollutionApplied = -1.0f;
 	pollutionGameplayInitialized = true;
 }
 
 void ResetPollutionGameplay() {
 	InitPollutionGameplay();
+	UpdateEnvironmentForPollution();
 	std::cout << "Ecosistema reiniciado (sin extractores)." << std::endl;
 }
 
@@ -387,20 +432,7 @@ static void RemoveOilPumpsPlayerTouch() {
 	if (removed) {
 		std::cout << "Extractor eliminado por el jugador. Restantes: " << activeOilPumps.size() << std::endl;
 		UpdateSceneModeFromPumpCount();
-		if (sceneMode < 2) {
-			icebergMeltTimer = 0.0f;
-			std::fill(icebergSlotVisible.begin(), icebergSlotVisible.end(), true);
-		}
-	}
-}
-
-static void HideNextIcebergSlot() {
-	for (size_t i = 0; i < icebergSlotVisible.size(); ++i) {
-		if (icebergSlotVisible[i]) {
-			icebergSlotVisible[i] = false;
-			std::cout << "Iceberg #" << (i + 1) << " desaparecio por derretimiento." << std::endl;
-			return;
-		}
+		std::fill(icebergSlotVisible.begin(), icebergSlotVisible.end(), true);
 	}
 }
 
@@ -411,23 +443,24 @@ void UpdatePollutionGameplay() {
 
 	RemoveOilPumpsPlayerTouch();
 
-	if (sceneMode < 2) {
-		oilPumpSpawnTimer += deltaTime;
-		if (oilPumpSpawnTimer >= kOilPumpSpawnInterval) {
-			oilPumpSpawnTimer = 0.0f;
-			SpawnOilPump();
-		}
-	}
+	// Reloj de pared desde el primer frame jugable (no acumula el tiempo de carga de modelos)
+	if (sOilPumpClockOrigin < 0.0)
+		sOilPumpClockOrigin = glfwGetTime();
 
-	if (sceneMode == 2) {
-		icebergMeltTimer += deltaTime;
-		if (icebergMeltTimer >= kIcebergMeltInterval) {
-			icebergMeltTimer = 0.0f;
-			HideNextIcebergSlot();
+	const double now = glfwGetTime();
+	const float sessionElapsed = (float)(now - sOilPumpClockOrigin);
+
+	// En primera persona (F2) no se agregan extractores automáticamente
+	if (sceneMode < 2 && !activeCamera && sessionElapsed >= kOilPumpFirstSpawnDelay) {
+		if (activeOilPumps.empty()) {
+			SpawnOilPump();
+			sOilPumpLastSpawnWall = now;
 		}
-	}
-	else {
-		icebergMeltTimer = 0.0f;
+		else if (sOilPumpLastSpawnWall < 0.0 ||
+			(now - sOilPumpLastSpawnWall) >= (double)kOilPumpSpawnInterval) {
+			SpawnOilPump();
+			sOilPumpLastSpawnWall = now;
+		}
 	}
 }
 
@@ -440,7 +473,8 @@ void DrawActiveOilPumps(Shader& shader) {
 
 void DrawSceneIcebergs(Shader& shader, float derretimiento) {
 	int slot = 0;
-	auto drawSlot = [&](const glm::mat4& modelMat, Model* mesh) {
+	auto drawSlot = [&](const glm::vec3& worldPos, const glm::mat4& modelMat, Model* mesh) {
+		RecordIcebergSlotDistance(slot, worldPos);
 		if (slot < (int)icebergSlotVisible.size() && icebergSlotVisible[slot]) {
 			shader.setMat4("model", modelMat);
 			mesh->Draw(shader);
@@ -448,67 +482,543 @@ void DrawSceneIcebergs(Shader& shader, float derretimiento) {
 		slot++;
 	};
 
-	drawSlot(icebergChicoModel, icebergChico);
-	drawSlot(icebergGrandeModel, icebergGrande);
+	// Layout clásico (commit d8587bd)
+	drawSlot(icebergChicoPosition, icebergChicoModel, icebergChico);
+	drawSlot(icebergGrandePosition, icebergGrandeModel, icebergGrande);
 
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(-2.0f, derretimiento, 15.0f), icebergDRotation, glm::vec3(2.5f)), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(2.0f, derretimiento * -0.1f, 15.5f), icebergDRotation + glm::vec3(0, 15, 0), glm::vec3(2.2f)), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(-2.5f, derretimiento * -0.05f, 19.0f), icebergDRotation + glm::vec3(0, -10, 0), glm::vec3(2.8f)), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(2.5f, derretimiento * 0.0f, 19.5f), icebergDRotation + glm::vec3(0, 45, 0), glm::vec3(2.3f)), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(-2.0f, derretimiento, 15.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(-2.0f, derretimiento, 15.0f), icebergDRotation, glm::vec3(2.5f)), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(2.0f, derretimiento * -0.1f, 15.5f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(2.0f, derretimiento * -0.1f, 15.5f), icebergDRotation + glm::vec3(0.0f, 15.0f, 0.0f), glm::vec3(2.2f)), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(-2.5f, derretimiento * -0.05f, 19.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(-2.5f, derretimiento * -0.05f, 19.0f), icebergDRotation + glm::vec3(0.0f, -10.0f, 0.0f), glm::vec3(2.8f)), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(2.5f, derretimiento * 0.0f, 19.5f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(2.5f, derretimiento * 0.0f, 19.5f), icebergDRotation + glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(2.3f)), icebergD);
 
-	drawSlot(BuildModelMatrix(glm::vec3(0.0f, derretimiento * 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f)), icebergA);
+	drawSlot(glm::vec3(0.0f, derretimiento * 0.2f, 17.5f),
+		BuildModelMatrix(glm::vec3(0.0f, derretimiento * 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f)), icebergA);
 
-	glm::vec3 miniScale(1.5f);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(8.0f, derretimiento * 0.0f, 15.0f), icebergDRotation + glm::vec3(0, 10, 0), miniScale), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(12.0f, derretimiento * -0.05f, 15.0f), icebergDRotation + glm::vec3(0, 45, 0), miniScale), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(8.5f, derretimiento * 0.0f, 18.0f), icebergDRotation + glm::vec3(0, -20, 0), miniScale), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(12.5f, derretimiento * -0.05f, 18.0f), icebergDRotation + glm::vec3(0, 75, 0), miniScale), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(8.0f, derretimiento * -0.1f, 21.0f), icebergDRotation + glm::vec3(0, 130, 0), miniScale), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(12.0f, derretimiento * 0.0f, 21.0f), icebergDRotation + glm::vec3(0, -5, 0), miniScale), icebergD);
+	const glm::vec3 miniScale(1.5f);
+	drawSlot(icebergDPosition + glm::vec3(8.0f, derretimiento * 0.0f, 15.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(8.0f, derretimiento * 0.0f, 15.0f), icebergDRotation + glm::vec3(0.0f, 10.0f, 0.0f), miniScale), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(12.0f, derretimiento * -0.05f, 15.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(12.0f, derretimiento * -0.05f, 15.0f), icebergDRotation + glm::vec3(0.0f, 45.0f, 0.0f), miniScale), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(8.5f, derretimiento * 0.0f, 18.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(8.5f, derretimiento * 0.0f, 18.0f), icebergDRotation + glm::vec3(0.0f, -20.0f, 0.0f), miniScale), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(12.5f, derretimiento * -0.05f, 18.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(12.5f, derretimiento * -0.05f, 18.0f), icebergDRotation + glm::vec3(0.0f, 75.0f, 0.0f), miniScale), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(8.0f, derretimiento * -0.1f, 21.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(8.0f, derretimiento * -0.1f, 21.0f), icebergDRotation + glm::vec3(0.0f, 130.0f, 0.0f), miniScale), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(12.0f, derretimiento * 0.0f, 21.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(12.0f, derretimiento * 0.0f, 21.0f), icebergDRotation + glm::vec3(0.0f, -5.0f, 0.0f), miniScale), icebergD);
 
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(-8.0f, derretimiento * -0.05f, 35.0f), icebergDRotation + glm::vec3(0, -25, 0), glm::vec3(1.2f)), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(-11.0f, derretimiento * -0.02f, 36.0f), icebergDRotation, glm::vec3(0.6f)), icebergD);
-	drawSlot(BuildModelMatrix(icebergDPosition + glm::vec3(-15.0f, derretimiento * 0.0f, 40.0f), icebergDRotation, glm::vec3(0.5f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(-18.0f, derretimiento * -0.05f, 42.0f), icebergDRotation, glm::vec3(0.7f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(-12.0f, derretimiento * 0.0f, 44.0f), icebergDRotation, glm::vec3(0.4f)), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(-8.0f, derretimiento * -0.05f, 35.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(-8.0f, derretimiento * -0.05f, 35.0f), icebergDRotation + glm::vec3(0.0f, -25.0f, 0.0f), glm::vec3(1.2f)), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(-11.0f, derretimiento * -0.02f, 36.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(-11.0f, derretimiento * -0.02f, 36.0f), icebergDRotation, glm::vec3(0.6f)), icebergD);
+	drawSlot(icebergDPosition + glm::vec3(-15.0f, derretimiento * 0.0f, 40.0f),
+		BuildModelMatrix(icebergDPosition + glm::vec3(-15.0f, derretimiento * 0.0f, 40.0f), icebergDRotation, glm::vec3(0.5f)), icebergD);
+	drawSlot(glm::vec3(-18.0f, derretimiento * -0.05f, 42.0f),
+		BuildModelMatrix(glm::vec3(-18.0f, derretimiento * -0.05f, 42.0f), icebergDRotation, glm::vec3(0.7f)), icebergD);
+	drawSlot(glm::vec3(-12.0f, derretimiento * 0.0f, 44.0f),
+		BuildModelMatrix(glm::vec3(-12.0f, derretimiento * 0.0f, 44.0f), icebergDRotation, glm::vec3(0.4f)), icebergD);
 
-	drawSlot(BuildModelMatrix(glm::vec3(-20.0f, derretimiento * -0.2f, -15.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(1.0f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(0.0f, derretimiento * -0.1f, -25.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(1.5f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(20.0f, derretimiento * -0.2f, -18.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(1.2f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(5.0f, derretimiento * -0.1f, -10.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(1.5f)), icebergD);
+	drawSlot(glm::vec3(-20.0f, derretimiento * -0.2f, -15.0f),
+		BuildModelMatrix(glm::vec3(-20.0f, derretimiento * -0.2f, -15.0f), icebergDRotation + glm::vec3(10.0f, 0.0f, 0.0f), glm::vec3(1.0f)), icebergD);
+	drawSlot(glm::vec3(0.0f, derretimiento * -0.1f, -25.0f),
+		BuildModelMatrix(glm::vec3(0.0f, derretimiento * -0.1f, -25.0f), icebergDRotation + glm::vec3(-10.0f, 0.0f, 0.0f), glm::vec3(1.5f)), icebergD);
+	drawSlot(glm::vec3(20.0f, derretimiento * -0.2f, -18.0f),
+		BuildModelMatrix(glm::vec3(20.0f, derretimiento * -0.2f, -18.0f), icebergDRotation + glm::vec3(-9.0f, 0.0f, 0.0f), glm::vec3(1.2f)), icebergD);
+	drawSlot(glm::vec3(5.0f, derretimiento * -0.1f, -10.0f),
+		BuildModelMatrix(glm::vec3(5.0f, derretimiento * -0.1f, -10.0f), icebergDRotation + glm::vec3(-7.0f, 0.0f, 0.0f), glm::vec3(1.5f)), icebergD);
 
-	drawSlot(BuildModelMatrix(glm::vec3(-85.0f, derretimiento * -4.0f, -100.0f), glm::vec3(0, 180, 0), glm::vec3(18.0f)), icebergGrande);
-	drawSlot(BuildModelMatrix(glm::vec3(90.0f, derretimiento * -3.5f, -85.0f), glm::vec3(0, 45, 0), glm::vec3(12.0f)), icebergChico);
+	drawSlot(glm::vec3(-85.0f, derretimiento * -4.0f, -100.0f),
+		BuildModelMatrix(glm::vec3(-85.0f, derretimiento * -4.0f, -100.0f), glm::vec3(0.0f, 180.0f, 0.0f), glm::vec3(18.0f)), icebergGrande);
+	drawSlot(glm::vec3(90.0f, derretimiento * -3.5f, -85.0f),
+		BuildModelMatrix(glm::vec3(90.0f, derretimiento * -3.5f, -85.0f), glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(12.0f)), icebergChico);
 
-	drawSlot(BuildModelMatrix(glm::vec3(-50.0f, derretimiento * -0.2f, -120.0f), icebergDRotation + glm::vec3(10, 0, 0), glm::vec3(2.5f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(-10.0f, derretimiento * -0.1f, -140.0f), icebergDRotation + glm::vec3(-10, 0, 0), glm::vec3(3.0f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(40.0f, derretimiento * -0.2f, -115.0f), icebergDRotation + glm::vec3(-9, 0, 0), glm::vec3(2.8f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(15.0f, derretimiento * -0.1f, -130.0f), icebergDRotation + glm::vec3(-7, 0, 0), glm::vec3(2.0f)), icebergD);
+	drawSlot(glm::vec3(-50.0f, derretimiento * -0.2f, -120.0f),
+		BuildModelMatrix(glm::vec3(-50.0f, derretimiento * -0.2f, -120.0f), icebergDRotation + glm::vec3(10.0f, 0.0f, 0.0f), glm::vec3(2.5f)), icebergD);
+	drawSlot(glm::vec3(-10.0f, derretimiento * -0.1f, -140.0f),
+		BuildModelMatrix(glm::vec3(-10.0f, derretimiento * -0.1f, -140.0f), icebergDRotation + glm::vec3(-10.0f, 0.0f, 0.0f), glm::vec3(3.0f)), icebergD);
+	drawSlot(glm::vec3(40.0f, derretimiento * -0.2f, -115.0f),
+		BuildModelMatrix(glm::vec3(40.0f, derretimiento * -0.2f, -115.0f), icebergDRotation + glm::vec3(-9.0f, 0.0f, 0.0f), glm::vec3(2.8f)), icebergD);
+	drawSlot(glm::vec3(15.0f, derretimiento * -0.1f, -130.0f),
+		BuildModelMatrix(glm::vec3(15.0f, derretimiento * -0.1f, -130.0f), icebergDRotation + glm::vec3(-7.0f, 0.0f, 0.0f), glm::vec3(2.0f)), icebergD);
 
-	drawSlot(BuildModelMatrix(glm::vec3(-15.0f, derretimiento * 0.1f, 20.0f), icebergARotation + glm::vec3(0, 45, 0), glm::vec3(3.5f)), icebergA);
-	drawSlot(BuildModelMatrix(glm::vec3(18.0f, derretimiento * 0.0f, 16.0f), icebergARotation + glm::vec3(0, -20, 0), glm::vec3(2.0f)), icebergA);
-	drawSlot(BuildModelMatrix(glm::vec3(5.0f, derretimiento * -0.5f, 45.0f), icebergARotation + glm::vec3(0, 90, 0), glm::vec3(4.0f)), icebergA);
-	drawSlot(BuildModelMatrix(glm::vec3(-40.0f, derretimiento * -0.2f, -90.0f), icebergARotation, glm::vec3(6.0f)), icebergA);
-	drawSlot(BuildModelMatrix(glm::vec3(45.0f, derretimiento * -0.2f, -110.0f), icebergARotation + glm::vec3(0, 180, 0), glm::vec3(5.5f)), icebergA);
+	drawSlot(glm::vec3(-15.0f, derretimiento * 0.1f, 20.0f),
+		BuildModelMatrix(glm::vec3(-15.0f, derretimiento * 0.1f, 20.0f), icebergARotation + glm::vec3(0.0f, 45.0f, 0.0f), glm::vec3(3.5f)), icebergA);
+	drawSlot(glm::vec3(18.0f, derretimiento * 0.0f, 16.0f),
+		BuildModelMatrix(glm::vec3(18.0f, derretimiento * 0.0f, 16.0f), icebergARotation + glm::vec3(0.0f, -20.0f, 0.0f), glm::vec3(2.0f)), icebergA);
+	drawSlot(glm::vec3(5.0f, derretimiento * -0.5f, 45.0f),
+		BuildModelMatrix(glm::vec3(5.0f, derretimiento * -0.5f, 45.0f), icebergARotation + glm::vec3(0.0f, 90.0f, 0.0f), glm::vec3(4.0f)), icebergA);
+	drawSlot(glm::vec3(-40.0f, derretimiento * -0.2f, -90.0f),
+		BuildModelMatrix(glm::vec3(-40.0f, derretimiento * -0.2f, -90.0f), icebergARotation, glm::vec3(6.0f)), icebergA);
+	drawSlot(glm::vec3(45.0f, derretimiento * -0.2f, -110.0f),
+		BuildModelMatrix(glm::vec3(45.0f, derretimiento * -0.2f, -110.0f), icebergARotation + glm::vec3(0.0f, 180.0f, 0.0f), glm::vec3(5.5f)), icebergA);
 
-	drawSlot(BuildModelMatrix(glm::vec3(-20.0f, derretimiento * 0.0f, 10.0f), icebergDRotation, glm::vec3(2.0f)), icebergD);
-	drawSlot(BuildModelMatrix(glm::vec3(25.0f, derretimiento * -0.1f, -5.0f), icebergDRotation, glm::vec3(1.5f)), icebergD);
+	drawSlot(glm::vec3(-20.0f, derretimiento * 0.0f, 10.0f),
+		BuildModelMatrix(glm::vec3(-20.0f, derretimiento * 0.0f, 10.0f), icebergDRotation, glm::vec3(2.0f)), icebergD);
+	drawSlot(glm::vec3(25.0f, derretimiento * -0.1f, -5.0f),
+		BuildModelMatrix(glm::vec3(25.0f, derretimiento * -0.1f, -5.0f), icebergDRotation, glm::vec3(1.5f)), icebergD);
 
+	RecordIcebergSlotDistance(slot, icebergGrandePosition);
 	if (slot < (int)icebergSlotVisible.size() && icebergSlotVisible[slot]) {
 		if (sceneMode < 2) {
 			shader.setMat4("model", icebergGrandeModel);
 			icebergGrande->Draw(shader);
 		}
 		else {
-			glm::mat4 derretido = BuildModelMatrix(icebergGrandePosition + glm::vec3(0, -5, 0), icebergGrandeRotation, icebergGrandeScale * 0.5f);
-			shader.setMat4("model", derretido);
+			const glm::vec3 meltPos = icebergGrandePosition + glm::vec3(0.0f, -5.0f, 0.0f);
+			shader.setMat4("model", BuildModelMatrix(meltPos, icebergGrandeRotation, icebergGrandeScale * 0.5f));
 			icebergGrande->Draw(shader);
 		}
 	}
 	slot++;
+
+	// Grandes alrededor del diámetro del disco blanco
+	DrawIceDiscRingLargeIcebergs(shader, derretimiento, slot);
+
+	// Mini icebergs en el disco blanco (contaminación: se ocultan de afuera hacia adentro)
+	DrawIceDiscScatteredHummocks(shader, derretimiento, slot);
+	SyncIcebergSlotsToPollution();
+}
+
+void DrawIceDiscRingLargeIcebergs(Shader& shader, float derretimiento, int& slot) {
+	UpdateIceDiscLayoutRadius();
+	const float yBase = kIceDiscSurfaceY + (derretimiento - 1.0f) * -0.08f;
+
+	struct RingSpec {
+		float angleDeg;
+		float radiusMul;
+		float scale;
+		float yawExtra;
+	};
+
+	// Anillo justo fuera del borde del disco (radio layout ≈ diámetro blanco a escala 1)
+	static const RingSpec ring[] = {
+		{ 0.0f,   1.08f, 21.0f,  0.0f },
+		{ 30.0f,  1.10f, 23.0f,  6.0f },
+		{ 60.0f,  1.09f, 19.5f, -4.0f },
+		{ 90.0f,  1.11f, 22.5f,  10.0f },
+		{ 120.0f, 1.08f, 20.0f,  -8.0f },
+		{ 150.0f, 1.10f, 24.0f,  4.0f },
+		{ 180.0f, 1.09f, 21.5f,  0.0f },
+		{ 210.0f, 1.11f, 23.5f,  -6.0f },
+		{ 240.0f, 1.08f, 20.5f,  12.0f },
+		{ 270.0f, 1.10f, 22.0f,  -2.0f },
+		{ 300.0f, 1.09f, 19.0f,  8.0f },
+		{ 330.0f, 1.10f, 21.0f,  -10.0f },
+	};
+	const int count = (int)(sizeof(ring) / sizeof(ring[0]));
+
+	for (int i = 0; i < count; ++i) {
+		const RingSpec& spec = ring[i];
+		const float rad = glm::radians(spec.angleDeg);
+		const float radius = gIceDiscLayoutRadius * spec.radiusMul;
+		const glm::vec3 pos(radius * cosf(rad), yBase, radius * sinf(rad));
+		const float faceYaw = spec.angleDeg + 180.0f + spec.yawExtra;
+		const glm::vec3 scale(spec.scale);
+
+		RecordIcebergSlotDistance(slot, pos);
+		if (slot < (int)icebergSlotVisible.size() && icebergSlotVisible[slot]) {
+			shader.setMat4("model", BuildModelMatrix(
+				pos, glm::vec3(0.0f, faceYaw, 0.0f), scale));
+			icebergGrande->Draw(shader);
+		}
+		slot++;
+	}
+}
+
+void DrawIceDiscScatteredHummocks(Shader& shader, float derretimiento, int& slot) {
+	UpdateIceDiscLayoutRadius();
+	const float yIce = kIceDiscSurfaceY + (derretimiento - 1.0f) * -0.08f;
+
+	struct HummockSpec {
+		float angleDeg;
+		float radiusFrac;
+		int kind; // 0 = A (montaña), 1 = D (placa)
+		float scale;
+		float yawExtra;
+	};
+
+	static const HummockSpec hummocks[] = {
+		{ 5.0f,   0.30f, 0, 2.6f,  0.0f },
+		{ 22.0f,  0.34f, 1, 1.5f,  18.0f },
+		{ 41.0f,  0.38f, 0, 3.0f,  -12.0f },
+		{ 58.0f,  0.32f, 1, 1.7f,  42.0f },
+		{ 76.0f,  0.42f, 0, 2.8f,  8.0f },
+		{ 94.0f,  0.30f, 1, 1.4f,  -25.0f },
+		{ 112.0f, 0.35f, 0, 3.2f,  55.0f },
+		{ 131.0f, 0.32f, 1, 1.6f,  10.0f },
+		{ 149.0f, 0.42f, 0, 2.5f,  -8.0f },
+		{ 158.0f, 0.50f, 1, 2.2f,  10.0f },
+		{ 186.0f, 0.36f, 0, 2.9f,  22.0f },
+		{ 204.0f, 0.28f, 1, 1.3f,  -15.0f },
+		{ 223.0f, 0.44f, 0, 3.1f,  35.0f },
+		{ 241.0f, 0.33f, 1, 1.5f,  5.0f },
+		{ 259.0f, 0.33f, 0, 2.7f,  -20.0f },
+		{ 278.0f, 0.40f, 1, 1.9f,  88.0f },
+		{ 296.0f, 0.31f, 0, 2.4f,  12.0f },
+		{ 315.0f, 0.37f, 1, 1.7f,  -35.0f },
+		{ 332.0f, 0.46f, 1, 2.0f,  48.0f },
+		{ 352.0f, 0.29f, 1, 1.4f,  62.0f },
+	};
+	const int count = (int)(sizeof(hummocks) / sizeof(hummocks[0]));
+
+	for (int i = 0; i < count; ++i) {
+		const HummockSpec& spec = hummocks[i];
+		const float rad = glm::radians(spec.angleDeg);
+		const float radius = gIceDiscLayoutRadius * spec.radiusFrac;
+		const glm::vec3 pos(radius * cosf(rad), yIce, radius * sinf(rad));
+		const float faceYaw = spec.angleDeg + 180.0f + spec.yawExtra;
+
+		RecordIcebergSlotDistance(slot, pos);
+		if (slot < (int)icebergSlotVisible.size() && icebergSlotVisible[slot]) {
+			if (spec.kind == 0) {
+				shader.setMat4("model", BuildModelMatrix(pos, icebergARotation + glm::vec3(0.0f, faceYaw, 0.0f), glm::vec3(spec.scale)));
+				icebergA->Draw(shader);
+			}
+			else {
+				shader.setMat4("model", BuildModelMatrix(pos, icebergDRotation + glm::vec3(0.0f, faceYaw, 0.0f), glm::vec3(spec.scale)));
+				icebergD->Draw(shader);
+			}
+		}
+		slot++;
+	}
+}
+
+void DrawCenterIglus(Shader& shader, float derretimiento) {
+	(void)derretimiento;
+	shader.setMat4("model", BuildModelMatrix(
+		glm::vec3(-20.0f, 0.05f, 10.0f), glm::vec3(-90.0f, 45.0f, 0.0f), glm::vec3(0.3f)));
+	iglu->Draw(shader);
+	shader.setMat4("model", BuildModelMatrix(
+		glm::vec3(25.0f, 0.02f, -5.0f), glm::vec3(-90.0f, -30.0f, 0.0f), glm::vec3(0.25f)));
+	iglu->Draw(shader);
+}
+
+void DrawCenterLandWildlife(Shader& shader, float derretimiento) {
+	(void)derretimiento;
+
+	static const float kOnDiscY = 1.15f;
+	static const float kPinguinoOnDiscExtraY = 0.55f;
+	static const float kRenoOnDiscExtraY = 0.70f;
+	static const float kWolfOnDiscExtraY = 0.45f;
+
+	auto drawAt = [&](const glm::vec3& basePos, auto drawFn) {
+		if (!IsWildlifeVisibleAtPos(basePos)) {
+			return;
+		}
+		const float sink = WildlifeExtraSinkAtPos(basePos);
+		drawFn(sink);
+	};
+
+	auto drawPinguino = [&](float ang, float rFrac, float yaw, float scale) {
+		const glm::vec3 base = IceDiscSurfacePos(ang, rFrac, kOnDiscY + kPinguinoOnDiscExtraY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + pinguinoDeathOffsetY + sink, base.z),
+				pinguinoRotation + glm::vec3(-90.0f, 0.0f, yaw),
+				glm::vec3(scale)));
+			pinguino->Draw(shader);
+		});
+	};
+
+	auto drawLeon = [&](float ang, float rFrac, float yaw, float scale) {
+		const glm::vec3 base = IceDiscSurfacePos(ang, rFrac, kOnDiscY + 0.12f);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				leonMarinoRotation + glm::vec3(-90.0f, 0.0f, yaw),
+				glm::vec3(scale)));
+			leonMarino->Draw(shader);
+		});
+	};
+
+	auto drawWolf = [&](float ang, float rFrac, float yaw, float scale) {
+		const glm::vec3 base = IceDiscSurfacePos(ang, rFrac, kOnDiscY + kWolfOnDiscExtraY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				wolfRotation + glm::vec3(-90.0f, 0.0f, yaw),
+				glm::vec3(scale)));
+			wolf->Draw(shader);
+		});
+	};
+
+	auto drawSeal = [&](float ang, float rFrac) {
+		const glm::vec3 base = IceDiscSurfacePos(ang, rFrac, kOnDiscY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				sealRotation, sealScale));
+			seal->Draw(shader);
+		});
+	};
+
+	// Pingüinos repartidos en el disco (15%–78% del radio)
+	drawPinguino(8.0f,   0.18f, 155.0f, 1.1f);
+	drawPinguino(28.0f,  0.26f, 175.0f, 1.0f);
+	drawPinguino(48.0f,  0.34f, 195.0f, 0.95f);
+	drawPinguino(68.0f,  0.22f, 160.0f, 1.15f);
+	drawPinguino(88.0f,  0.40f, 185.0f, 1.05f);
+	drawPinguino(108.0f, 0.30f, 200.0f, 1.0f);
+	drawPinguino(128.0f, 0.48f, 170.0f, 0.9f);
+	drawPinguino(148.0f, 0.36f, 145.0f, 1.1f);
+	drawPinguino(168.0f, 0.44f, 190.0f, 0.95f);
+	drawPinguino(188.0f, 0.28f, 165.0f, 1.05f);
+	drawPinguino(208.0f, 0.52f, 180.0f, 1.0f);
+	drawPinguino(228.0f, 0.38f, 150.0f, 1.08f);
+	drawPinguino(248.0f, 0.46f, 175.0f, 0.92f);
+	drawPinguino(268.0f, 0.32f, 160.0f, 1.12f);
+	drawPinguino(288.0f, 0.55f, 190.0f, 0.88f);
+	drawPinguino(308.0f, 0.42f, 140.0f, 1.05f);
+	drawPinguino(328.0f, 0.50f, 185.0f, 0.98f);
+	drawPinguino(348.0f, 0.24f, 170.0f, 1.1f);
+
+	// Leones marinos visibles sobre el hielo blanco (escala mayor)
+	drawLeon(18.0f,  0.38f, 0.0f,   1.4f);
+	drawLeon(42.0f,  0.52f, 45.0f,  1.2f);
+	drawLeon(75.0f,  0.45f, 90.0f,  1.65f);
+	drawLeon(105.0f, 0.58f, 135.0f, 1.1f);
+	drawLeon(138.0f, 0.48f, 180.0f, 1.55f);
+	drawLeon(165.0f, 0.62f, 225.0f, 1.25f);
+	drawLeon(198.0f, 0.42f, 270.0f, 1.7f);
+	drawLeon(225.0f, 0.55f, 315.0f, 1.15f);
+	drawLeon(255.0f, 0.50f, 30.0f,  1.5f);
+	drawLeon(285.0f, 0.65f, 75.0f,  1.35f);
+	drawLeon(315.0f, 0.44f, 120.0f, 1.6f);
+	drawLeon(345.0f, 0.56f, 200.0f, 1.2f);
+
+	// Lobos en el borde interior del disco
+	drawWolf(5.0f,   0.76f, 0.0f,  4.6f);
+	drawWolf(62.0f,  0.80f, 3.0f,  4.8f);
+	drawWolf(118.0f, 0.74f, -2.0f, 4.5f);
+	drawWolf(175.0f, 0.82f, 5.0f,  4.7f);
+	drawWolf(232.0f, 0.78f, 1.0f,  4.9f);
+	drawWolf(288.0f, 0.81f, -1.0f, 4.6f);
+
+	// Focas
+	drawSeal(50.0f,  0.32f);
+	drawSeal(95.0f,  0.38f);
+	drawSeal(155.0f, 0.35f);
+	drawSeal(205.0f, 0.42f);
+	drawSeal(260.0f, 0.36f);
+	drawSeal(310.0f, 0.44f);
+
+	// Zorros
+	{
+		const glm::vec3 base = IceDiscSurfacePos(95.0f, 0.36f, kOnDiscY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				zorroRotation + glm::vec3(-90.0f, 0.0f, 90.0f),
+				glm::vec3(1.0f) * zorroBreathingScaleFactor));
+			zorro->Draw(shader);
+		});
+	}
+	{
+		const glm::vec3 base = IceDiscSurfacePos(185.0f, 0.44f, kOnDiscY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				zorroRotation + glm::vec3(-90.0f, 0.0f, -40.0f),
+				glm::vec3(0.95f) * zorroBreathingScaleFactor));
+			zorro->Draw(shader);
+		});
+	}
+	{
+		const glm::vec3 base = IceDiscSurfacePos(268.0f, 0.40f, kOnDiscY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				zorroRotation + glm::vec3(-90.0f, 0.0f, -70.0f),
+				glm::vec3(0.95f) * zorroBreathingScaleFactor));
+			zorro->Draw(shader);
+		});
+	}
+	{
+		const glm::vec3 base = IceDiscSurfacePos(332.0f, 0.48f, kOnDiscY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				zorroRotation + glm::vec3(-90.0f, 0.0f, 30.0f),
+				glm::vec3(0.9f) * zorroBreathingScaleFactor));
+			zorro->Draw(shader);
+		});
+	}
+	{
+		const glm::vec3 base = IceDiscSurfacePos(22.0f, 0.52f, kOnDiscY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				zorroRotation + glm::vec3(-90.0f, 0.0f, 120.0f),
+				glm::vec3(0.92f) * zorroBreathingScaleFactor));
+			zorro->Draw(shader);
+		});
+	}
+
+	// Renos
+	{
+		const glm::vec3 base = IceDiscSurfacePos(158.0f, 0.50f, kOnDiscY + kRenoOnDiscExtraY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				renoRotation + glm::vec3(-90.0f, 0.0f, -150.0f),
+				glm::vec3(1.8f)));
+			reno->Draw(shader);
+		});
+	}
+	{
+		const glm::vec3 base = IceDiscSurfacePos(298.0f, 0.46f, kOnDiscY + kRenoOnDiscExtraY);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				renoRotation + glm::vec3(-90.0f, 0.0f, 30.0f),
+				glm::vec3(1.7f)));
+			reno->Draw(shader);
+		});
+	}
+
+	// Osos pardos
+	{
+		const glm::vec3 base = IceDiscSurfacePos(44.0f, 0.28f, kOnDiscY + 0.35f);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				bearRotation + glm::vec3(-90.0f, -30.0f, 0.0f),
+				glm::vec3(1.8f)));
+			bear->Draw(shader);
+		});
+	}
+	{
+		const glm::vec3 base = IceDiscSurfacePos(220.0f, 0.32f, kOnDiscY + 0.35f);
+		drawAt(base, [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(base.x, base.y + sink, base.z),
+				bearRotation + glm::vec3(-90.0f, 20.0f, 0.0f),
+				glm::vec3(1.7f)));
+			bear->Draw(shader);
+		});
+	}
+
+	// Oso polar en la montaña central
+	if (sceneMode < 2) {
+		drawAt(glm::vec3(0.0f, 22.0f, 17.5f), [&](float sink) {
+			shader.setMat4("model", BuildModelMatrix(
+				glm::vec3(0.0f, 22.0f + sink, 17.5f),
+				osoARotation + glm::vec3(90.0f, 180.0f, 90.0f),
+				glm::vec3(1.2f)));
+			osoA->Draw(shader);
+		});
+	}
+}
+
+static glm::vec3 OpenWaterPosition(float angleDeg, float radius, float y) {
+	const float rad = glm::radians(angleDeg);
+	return glm::vec3(radius * cosf(rad), y, radius * sinf(rad));
+}
+
+// Mar abierto: fuera del anillo de icebergs (~1.16R + tamaño del modelo)
+static float AquaticSwimRadius() {
+	UpdateIceDiscLayoutRadius();
+	return gIceDiscLayoutRadius * 1.42f;
+}
+
+void DrawOpenWaterSwimmers(Shader& shader, Shader& skinShader, const glm::mat4& projection, const glm::mat4& view, float deltaTime) {
+	if (GetPollutionBlend() >= 1.0f) {
+		return;
+	}
+	UpdateIceDiscLayoutRadius();
+
+	const float t = (float)glfwGetTime();
+	const float swimR = AquaticSwimRadius();
+	const float swimR2 = swimR * 0.94f;
+	const float swimY = 0.12f;
+
+	auto drawOrcaAt = [&](float angleDeg, float radius, float scale, float phase) {
+		const float balanceo = sinf(t * 1.5f + phase) * 0.5f;
+		const float inclinacion = sinf(t * 0.8f + phase * 0.7f) * 5.0f;
+		const glm::vec3 pos = OpenWaterPosition(angleDeg, radius, -8.0f + balanceo);
+		if (!IsWildlifeVisibleAtPos(pos)) {
+			return;
+		}
+		const float sink = WildlifeExtraSinkAtPos(pos);
+		shader.setMat4("model", BuildModelMatrix(
+			glm::vec3(pos.x, pos.y + sink, pos.z),
+			orcaRotation + glm::vec3(-90.0f + inclinacion, 0.0f, 0.0f),
+			glm::vec3(scale)));
+		orca->Draw(shader);
+	};
+
+	drawOrcaAt(21.0f, swimR, 4.5f, 0.0f);
+	drawOrcaAt(103.0f, swimR2, 4.2f, 1.4f);
+	drawOrcaAt(190.0f, swimR, 4.8f, 2.8f);
+	drawOrcaAt(276.0f, swimR2, 4.4f, 4.1f);
+	drawOrcaAt(347.0f, swimR, 4.6f, 5.5f);
+
+	auto drawPezAt = [&](float angleDeg, float radius, float y, float scaleMul) {
+		const glm::vec3 pos = OpenWaterPosition(angleDeg, radius, y);
+		if (!IsWildlifeVisibleAtPos(pos)) {
+			return;
+		}
+		const float sink = WildlifeExtraSinkAtPos(pos);
+		const glm::vec3 drawPos(pos.x, pos.y + sink, pos.z);
+		const glm::mat4 fishModelMat = BuildModelMatrix(drawPos, pezRotation, pezScale * scaleMul);
+		pez->UpdateAnimation(deltaTime);
+		skinShader.use();
+		skinShader.setMat4("projection", projection);
+		skinShader.setMat4("view", view);
+		skinShader.setMat4("model", fishModelMat);
+		skinShader.setMat4("gBones", MAX_RIGGING_BONES, pez->gBones);
+		pez->Draw(skinShader);
+		shader.use();
+	};
+
+	drawPezAt(47.0f, swimR2, swimY, 1.55f);
+	drawPezAt(74.0f, swimR, swimY + 0.05f, 1.4f);
+	drawPezAt(132.0f, swimR2, swimY, 1.35f);
+	drawPezAt(218.0f, swimR, swimY, 1.5f);
+	drawPezAt(248.0f, swimR2, swimY + 0.03f, 1.25f);
+	drawPezAt(305.0f, swimR, swimY, 1.45f);
+
+	auto drawFishAt = [&](float angleDeg, float radius, float y, float scaleMul) {
+		const glm::vec3 pos = OpenWaterPosition(angleDeg, radius, y);
+		if (!IsWildlifeVisibleAtPos(pos)) {
+			return;
+		}
+		const float sink = WildlifeExtraSinkAtPos(pos);
+		shader.setMat4("model", BuildModelMatrix(
+			glm::vec3(pos.x, pos.y + sink, pos.z),
+			fishRotation,
+			fishScale * scaleMul));
+		fish->Draw(shader);
+	};
+
+	drawFishAt(161.0f, swimR, swimY, 0.9f);
+	drawFishAt(247.0f, swimR2, swimY, 0.85f);
+	drawFishAt(327.0f, swimR, swimY + 0.02f, 0.75f);
+
+	auto drawPexAt = [&](float angleDeg, float radius, float y, float scaleMul) {
+		const glm::vec3 pos = OpenWaterPosition(angleDeg, radius, y);
+		if (!IsWildlifeVisibleAtPos(pos)) {
+			return;
+		}
+		const float sink = WildlifeExtraSinkAtPos(pos);
+		shader.setMat4("model", BuildModelMatrix(
+			glm::vec3(pos.x, pos.y + sink, pos.z),
+			pexDoradoRotation,
+			pexDoradoScale * scaleMul));
+		pexDorado->Draw(shader);
+	};
+
+	drawPexAt(22.0f, swimR2, swimY + 0.12f, 1.0f);
+	drawPexAt(304.0f, swimR2, swimY + 0.1f, 0.9f);
 }
 
 void DrawSceneIcebergsFresnel(Shader& shader, float derretimiento) {
+	(void)derretimiento;
 	if (icebergSlotVisible.size() > 0 && icebergSlotVisible[0]) {
 		shader.setMat4("model", icebergChicoModel);
 		icebergChico->Draw(shader);
@@ -517,10 +1027,11 @@ void DrawSceneIcebergsFresnel(Shader& shader, float derretimiento) {
 		shader.setMat4("model", icebergGrandeModel);
 		icebergGrande->Draw(shader);
 	}
-	shader.setMat4("model", BuildModelMatrix(glm::vec3(-20.0f, -0.2f, 15.0f), icebergDRotation, glm::vec3(2.5f)));
-	icebergD->Draw(shader);
-	shader.setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f)));
-	icebergA->Draw(shader);
+	if (icebergSlotVisible.size() > 6 && icebergSlotVisible[6]) {
+		shader.setMat4("model", BuildModelMatrix(
+			glm::vec3(0.0f, derretimiento * 0.2f, 17.5f), icebergARotation, glm::vec3(3.5f)));
+		icebergA->Draw(shader);
+	}
 }
 
 void StartWolfCelebration() {
@@ -697,9 +1208,6 @@ bool waveAnimationActive = true; // Toggle para animación de la ola
 
 // Audio
 ISoundEngine *SoundEngine = createIrrKlangDevice();
-
-// selección de cámara
-bool    activeCamera = 0; // 0 = tercera persona (se dibuja el jugador); F2 = primera persona
 
 // Entrada a función principal
 int main()
@@ -902,19 +1410,11 @@ bool Start() {
 	std::cout << "Loaded " << loadedModels << " individual models" << std::endl;
 
 	InitPollutionGameplay();
+	InitIceDiscMesh();
 
-	// Cubemap
-	vector<std::string> faces
-	{
-		"textures/cubemap/03/posx.jpg",
-		"textures/cubemap/03/negx.jpg",
-		"textures/cubemap/03/posy.jpg",
-		"textures/cubemap/03/negy.jpg",
-		"textures/cubemap/03/posz.jpg",
-		"textures/cubemap/03/negz.jpg"
-	};
+	// Cubemap: cielo azul procedural (claro arriba, más oscuro hacia el horizonte y abajo)
 	mainCubeMap = new CubeMap();
-	mainCubeMap->loadCubemap(faces);
+	mainCubeMap->loadProceduralSkyCubemap(128, 0.0f);
 
 	camera3rd.Position = position;
 	camera3rd.Position.y += trdpersonHeightOffset;
@@ -952,6 +1452,8 @@ bool Start() {
 	
 	// SoundEngine->play2D("sound/EternalGarden.mp3", true);
 
+	lastFrame = (float)glfwGetTime();
+
 	return true;
 }
 
@@ -985,15 +1487,303 @@ void SetLightUniformVec3(Shader* shader, const char* propertyName, size_t lightI
 	shader->setVec3(uniformName.c_str(), value);
 }
 
+static float GetPollutionBlend() {
+	const int count = (int)activeOilPumps.size();
+	if (count <= 0) {
+		return 0.0f;
+	}
+	return glm::clamp((float)count / (float)kPumpsForDisaster, 0.0f, 1.0f);
+}
+
+static float WildlifeDistXZ(const glm::vec3& pos) {
+	return glm::length(glm::vec2(pos.x, pos.z));
+}
+
+static glm::vec3 IceDiscSurfacePos(float angleDeg, float radiusFrac, float yOnIce) {
+	UpdateIceDiscLayoutRadius();
+	const float rad = glm::radians(angleDeg);
+	const float r = gIceDiscLayoutRadius * radiusFrac;
+	return glm::vec3(r * cosf(rad), kIceDiscSurfaceY + yOnIce, r * sinf(rad));
+}
+
+static float WildlifeMinDistOnDisc() {
+	UpdateIceDiscLayoutRadius();
+	return gIceDiscLayoutRadius * 0.05f;
+}
+
+static float WildlifeMaxDistOnDisc() {
+	UpdateIceDiscLayoutRadius();
+	return gIceDiscLayoutRadius * 0.84f;
+}
+
+static bool IsWildlifeVisibleAtPos(const glm::vec3& pos) {
+	const float t = GetPollutionBlend();
+	if (t >= 1.0f) {
+		return false;
+	}
+	if (t <= 0.0f) {
+		return true;
+	}
+	const float d = WildlifeDistXZ(pos);
+	const float minD = WildlifeMinDistOnDisc();
+	const float maxD = WildlifeMaxDistOnDisc();
+	const float norm = glm::clamp((d - minD) / (maxD - minD + 1e-5f), 0.0f, 1.0f);
+	return t < (1.0f - norm) + 0.0001f;
+}
+
+static float WildlifeExtraSinkAtPos(const glm::vec3& pos) {
+	const float t = GetPollutionBlend();
+	if (t <= 0.0f) {
+		return 0.0f;
+	}
+	const float d = WildlifeDistXZ(pos);
+	const float minD = WildlifeMinDistOnDisc();
+	const float maxD = WildlifeMaxDistOnDisc();
+	const float norm = glm::clamp((d - minD) / (maxD - minD + 1e-5f), 0.0f, 1.0f);
+	const float hideAt = 1.0f - norm;
+	if (t <= hideAt) {
+		return 0.0f;
+	}
+	const float u = glm::clamp((t - hideAt) / (1.0f - hideAt + 1e-5f), 0.0f, 1.0f);
+	return u * -18.0f;
+}
+
+static void RecordIcebergSlotDistance(int slotIndex, const glm::vec3& worldPos) {
+	if (slotIndex >= 0 && slotIndex < (int)icebergSlotDistances.size()) {
+		icebergSlotDistances[slotIndex] = WildlifeDistXZ(worldPos);
+	}
+}
+
+static void SyncIcebergSlotsToPollution() {
+	const int total = (int)icebergSlotVisible.size();
+	if (total <= 0) {
+		return;
+	}
+	const float t = GetPollutionBlend();
+	const int hideCount = (int)floorf(t * (float)total + 0.0001f);
+	std::vector<int> order(total);
+	for (int i = 0; i < total; ++i) {
+		order[i] = i;
+	}
+	std::sort(order.begin(), order.end(), [](int a, int b) {
+		const float da = (a < (int)icebergSlotDistances.size()) ? icebergSlotDistances[a] : 0.0f;
+		const float db = (b < (int)icebergSlotDistances.size()) ? icebergSlotDistances[b] : 0.0f;
+		return da > db;
+	});
+	std::fill(icebergSlotVisible.begin(), icebergSlotVisible.end(), true);
+	for (int i = 0; i < hideCount && i < total; ++i) {
+		icebergSlotVisible[order[i]] = false;
+	}
+}
+
+static void UpdateEnvironmentForPollution() {
+	const float t = GetPollutionBlend();
+	UpdateIceDiscLayoutRadius();
+	if (mainCubeMap != nullptr && fabsf(t - gSkyPollutionApplied) > 0.007f) {
+		mainCubeMap->loadProceduralSkyCubemap(128, t);
+		gSkyPollutionApplied = t;
+	}
+}
+
+static void UpdateIceDiscLayoutRadius() {
+	gIceDiscLayoutRadius = olaScale.x * kIceDiscDiameterFactor;
+}
+
+static float GetIceDiscDrawScale() {
+	return glm::mix(1.0f, 0.50f, GetPollutionBlend());
+}
+
+static Vertex MakeIceDiscVertex(const glm::vec3& pos, const glm::vec3& normal, const glm::vec2& uv) {
+	Vertex v;
+	v.Position = pos;
+	v.Normal = normal;
+	v.TexCoords = uv;
+	v.Tangent = glm::vec3(1.0f, 0.0f, 0.0f);
+	v.Bitangent = glm::vec3(0.0f, 1.0f, 0.0f);
+	v.IDs1 = v.IDs2 = v.IDs3 = glm::vec4(0.0f);
+	v.Weights1 = v.Weights2 = v.Weights3 = glm::vec4(0.0f);
+	return v;
+}
+
+void InitIceDiscMesh() {
+	if (iceDiscVAO != 0) {
+		return;
+	}
+	UpdateIceDiscLayoutRadius();
+
+	const int segments = 48;
+	std::vector<Vertex> verts;
+	std::vector<unsigned int> indices;
+	verts.reserve(2 + (segments + 1) * 2);
+	indices.reserve(segments * 12);
+
+	const unsigned int bottomCenter = 0;
+	const unsigned int topCenter = 1;
+	verts.push_back(MakeIceDiscVertex(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.5f, 0.5f)));
+	verts.push_back(MakeIceDiscVertex(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.5f, 0.5f)));
+
+	std::vector<unsigned int> bottomRing;
+	std::vector<unsigned int> topRing;
+	bottomRing.reserve(segments + 1);
+	topRing.reserve(segments + 1);
+
+	for (int i = 0; i <= segments; ++i) {
+		const float t = (float)i / (float)segments;
+		const float angle = t * 2.0f * glm::pi<float>();
+		const float c = cosf(angle);
+		const float s = sinf(angle);
+		const glm::vec2 uv(t, 0.5f);
+
+		bottomRing.push_back((unsigned int)verts.size());
+		verts.push_back(MakeIceDiscVertex(glm::vec3(c, s, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), uv));
+
+		topRing.push_back((unsigned int)verts.size());
+		verts.push_back(MakeIceDiscVertex(glm::vec3(c, s, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), uv));
+	}
+
+	for (int i = 0; i < segments; ++i) {
+		const unsigned int b0 = bottomRing[i];
+		const unsigned int b1 = bottomRing[i + 1];
+		const unsigned int t0 = topRing[i];
+		const unsigned int t1 = topRing[i + 1];
+
+		indices.push_back(bottomCenter);
+		indices.push_back(b1);
+		indices.push_back(b0);
+
+		indices.push_back(topCenter);
+		indices.push_back(t0);
+		indices.push_back(t1);
+
+		const float midAngle = (float)(i + 0.5f) * 2.0f * glm::pi<float>() / (float)segments;
+		const glm::vec3 sideNormal(cosf(midAngle), sinf(midAngle), 0.0f);
+		verts[b0].Normal = sideNormal;
+		verts[b1].Normal = sideNormal;
+		verts[t0].Normal = sideNormal;
+		verts[t1].Normal = sideNormal;
+
+		indices.push_back(b0);
+		indices.push_back(b1);
+		indices.push_back(t1);
+		indices.push_back(b0);
+		indices.push_back(t1);
+		indices.push_back(t0);
+	}
+	iceDiscIndexCount = (GLsizei)indices.size();
+
+	glGenVertexArrays(1, &iceDiscVAO);
+	glGenBuffers(1, &iceDiscVBO);
+	glGenBuffers(1, &iceDiscEBO);
+	glBindVertexArray(iceDiscVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, iceDiscVBO);
+	glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(Vertex), verts.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iceDiscEBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, TexCoords));
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Tangent));
+	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Bitangent));
+	glBindVertexArray(0);
+
+	unsigned char whitePx[] = { 255, 255, 255, 255 };
+	glGenTextures(1, &iceDiscWhiteTex);
+	glBindTexture(GL_TEXTURE_2D, iceDiscWhiteTex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, whitePx);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+static void ApplyMaterialToIceDiscShader(Shader& shader, int lightingMode, const Material& mat) {
+	if (lightingMode == 0 || lightingMode == 2) {
+		shader.setVec4("MaterialAmbientColor", mat.ambient);
+		shader.setVec4("MaterialDiffuseColor", mat.diffuse);
+		shader.setVec4("MaterialSpecularColor", mat.specular);
+		shader.setFloat("transparency", mat.transparency);
+	}
+}
+
+static Material MaterialForIceDisc(float derretimiento) {
+	Material mat;
+	mat.transparency = 1.0f;
+
+	const float p = GetPollutionBlend();
+	const glm::vec4 cleanAmbient(0.32f, 0.36f, 0.42f, 1.0f);
+	const glm::vec4 cleanDiffuse(0.94f, 0.97f, 1.0f, 1.0f);
+	const glm::vec4 cleanSpecular(0.55f, 0.60f, 0.68f, 1.0f);
+	const glm::vec4 dirtyAmbient(0.18f, 0.19f, 0.20f, 1.0f);
+	const glm::vec4 dirtyDiffuse(0.42f, 0.44f, 0.46f, 1.0f);
+	const glm::vec4 dirtySpecular(0.10f, 0.10f, 0.11f, 1.0f);
+
+	mat.ambient = glm::mix(cleanAmbient, dirtyAmbient, p);
+	mat.diffuse = glm::mix(cleanDiffuse, dirtyDiffuse, p);
+	mat.specular = glm::mix(cleanSpecular, dirtySpecular, p);
+
+	if (sceneMode >= 1) {
+		const float melt = glm::clamp(derretimiento * 0.06f, 0.0f, 0.35f);
+		mat.ambient = glm::mix(mat.ambient, dirtyAmbient, melt);
+		mat.diffuse = glm::mix(mat.diffuse, dirtyDiffuse, melt * 0.5f);
+		mat.specular *= (1.0f - melt * 0.6f);
+	}
+	return mat;
+}
+
+void DrawIceDisc(Shader& shader, int lightingMode, const glm::mat4& projection, const glm::mat4& view, float derretimiento) {
+	if (iceDiscVAO == 0) {
+		return;
+	}
+
+	shader.use();
+	shader.setMat4("projection", projection);
+	shader.setMat4("view", view);
+
+	iceDiscSavedMaterial = material01;
+	material01 = MaterialForIceDisc(derretimiento);
+	ApplyMaterialToIceDiscShader(shader, lightingMode, material01);
+
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	glPolygonOffset(3.0f, 3.0f);
+
+	const float drawRadius = gIceDiscLayoutRadius * GetIceDiscDrawScale();
+	const glm::mat4 discModel = BuildModelMatrix(
+		glm::vec3(0.0f, kIceDiscSurfaceY, 0.0f),
+		glm::vec3(-90.0f, 0.0f, 0.0f),
+		glm::vec3(drawRadius, drawRadius, kIceDiscThickness));
+	shader.setMat4("model", discModel);
+
+	const GLint texLoc = glGetUniformLocation(shader.ID, "texture_diffuse1");
+	if (texLoc >= 0) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, iceDiscWhiteTex);
+		glUniform1i(texLoc, 0);
+	}
+
+	glBindVertexArray(iceDiscVAO);
+	glDrawElements(GL_TRIANGLES, iceDiscIndexCount, GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+
+	glDisable(GL_POLYGON_OFFSET_FILL);
+	material01 = iceDiscSavedMaterial;
+	ApplyMaterialToIceDiscShader(shader, lightingMode, material01);
+}
+
 
 bool Update() {
-	float derretimiento = 1.0f;
-	if (sceneMode == 1) derretimiento = 2.0f; // Se hunden un poco
-	if (sceneMode == 2) derretimiento = 6.0f; // Se hunden mucho (derretidos)
+	const float pollution = GetPollutionBlend();
+	float derretimiento = 1.0f + pollution * 8.0f;
 
-	// Cálculo del framerate
+	// Cálculo del framerate (tope evita un salto enorme en el primer frame tras cargar modelos)
 	float currentFrame = (float)glfwGetTime();
 	deltaTime = currentFrame - lastFrame;
+	if (deltaTime > 0.05f)
+		deltaTime = 0.05f;
 	lastFrame = currentFrame;
 
 	// Procesa la entrada del teclado o mouse
@@ -1002,6 +1792,7 @@ bool Update() {
 	UpdatePinguinoDeath();
 	UpdateZorroBreathing();
 	UpdatePollutionGameplay();
+	UpdateEnvironmentForPollution();
 
 	// Renderizado R - G - B - A
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
@@ -1143,8 +1934,78 @@ bool Update() {
 			wavesTime += 0.017f; // avance del tiempo de animación (menor = movimiento más lento)
 		}
 
+		// Nadadores en el mar (antes del disco blanco; desaparecen con la contaminación)
+		if (pollution < 1.0f) {
+			glDisable(GL_BLEND);
+			glDepthMask(GL_TRUE);
+			if (lightingMode == 2) {
+				basicPhongShader->use();
+				basicPhongShader->setMat4("projection", projection);
+				basicPhongShader->setMat4("view", view);
+				basicPhongShader->setVec4("LightColor", gSimpleLight.Color);
+				basicPhongShader->setVec4("LightPower", gSimpleLight.Power);
+				basicPhongShader->setInt("alphaIndex", gSimpleLight.alphaIndex);
+				basicPhongShader->setFloat("distance", gSimpleLight.distance);
+				basicPhongShader->setVec3("lightPosition", gSimpleLight.Position);
+				basicPhongShader->setVec3("lightDirection", gSimpleLight.Direction);
+				basicPhongShader->setVec3("eye", eyePosition);
+				DrawOpenWaterSwimmers(*basicPhongShader, *dynamicShader, projection, view, deltaTime);
+			}
+			else {
+				mLightsShader->use();
+				mLightsShader->setMat4("projection", projection);
+				mLightsShader->setMat4("view", view);
+				mLightsShader->setInt("numLights", (int)gLights.size());
+				for (size_t li = 0; li < gLights.size(); ++li) {
+					SetLightUniformVec3(mLightsShader, "Position", li, gLights[li].Position);
+					SetLightUniformVec3(mLightsShader, "Direction", li, gLights[li].Direction);
+					SetLightUniformVec4(mLightsShader, "Color", li, gLights[li].Color);
+					SetLightUniformVec4(mLightsShader, "Power", li, gLights[li].Power);
+					SetLightUniformInt(mLightsShader, "alphaIndex", li, gLights[li].alphaIndex);
+					SetLightUniformFloat(mLightsShader, "distance", li, gLights[li].distance);
+				}
+				mLightsShader->setVec3("eye", eyePosition);
+				DrawOpenWaterSwimmers(*mLightsShader, *dynamicShader, projection, view, deltaTime);
+			}
+		}
+
+		// Disco de hielo blanco (encima del agua y de los nadadores del centro)
+		glDisable(GL_BLEND);
+		glDepthMask(GL_TRUE);
+		if (lightingMode == 2) {
+			basicPhongShader->use();
+			basicPhongShader->setMat4("projection", projection);
+			basicPhongShader->setMat4("view", view);
+			basicPhongShader->setVec4("LightColor", gSimpleLight.Color);
+			basicPhongShader->setVec4("LightPower", gSimpleLight.Power);
+			basicPhongShader->setInt("alphaIndex", gSimpleLight.alphaIndex);
+			basicPhongShader->setFloat("distance", gSimpleLight.distance);
+			basicPhongShader->setVec3("lightPosition", gSimpleLight.Position);
+			basicPhongShader->setVec3("lightDirection", gSimpleLight.Direction);
+			basicPhongShader->setVec3("eye", eyePosition);
+			DrawIceDisc(*basicPhongShader, 2, projection, view, derretimiento);
+		}
+		else {
+			mLightsShader->use();
+			mLightsShader->setMat4("projection", projection);
+			mLightsShader->setMat4("view", view);
+			mLightsShader->setInt("numLights", (int)gLights.size());
+			for (size_t li = 0; li < gLights.size(); ++li) {
+				SetLightUniformVec3(mLightsShader, "Position", li, gLights[li].Position);
+				SetLightUniformVec3(mLightsShader, "Direction", li, gLights[li].Direction);
+				SetLightUniformVec4(mLightsShader, "Color", li, gLights[li].Color);
+				SetLightUniformVec4(mLightsShader, "Power", li, gLights[li].Power);
+				SetLightUniformInt(mLightsShader, "alphaIndex", li, gLights[li].alphaIndex);
+				SetLightUniformFloat(mLightsShader, "distance", li, gLights[li].distance);
+			}
+			mLightsShader->setVec3("eye", eyePosition);
+			DrawIceDisc(*mLightsShader, 0, projection, view, derretimiento);
+		}
+
 		// restore previously active shader
 		activeShader->use();
+		activeShader->setMat4("projection", projection);
+		activeShader->setMat4("view", view);
 
 		/*
 
@@ -1172,57 +2033,8 @@ bool Update() {
 		activeShader->setMat4("model", gasModel);
 		gas->Draw(*activeShader);*/
 
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-20.0f, 0.05f, 10.0f), glm::vec3(-90.0f, 45.0f, 0.0f), glm::vec3(0.3f)));
-		iglu->Draw(*activeShader);
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(25.0f, 0.02f, -5.0f), glm::vec3(-90.0f, -30.0f, 0.0f), glm::vec3(0.25f)));
-		iglu->Draw(*activeShader);
-
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(15.0f, 13.0f, 15.0f), bearRotation + glm::vec3(-90.0f, -30.0f, 0.0f), glm::vec3(1.8f)));
-		bear->Draw(*activeShader);
-
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 4.0f + pinguinoDeathOffsetY, -15.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 180.0f), glm::vec3(1.0f)));
-		pinguino->Draw(*activeShader);
-
-		{
-			float balanceo = sin((float)glfwGetTime() * 1.5f) * 0.5f;
-			float inclinacion = sin((float)glfwGetTime() * 0.8f) * 5.0f;
-			activeShader->setMat4("model", BuildModelMatrix(
-				glm::vec3(10.0f, -8.0f + balanceo, -65.0f),
-				orcaRotation + glm::vec3(-90.0f + inclinacion, 0.0f, 0.0f),
-				glm::vec3(4.5f)));
-			orca->Draw(*activeShader);
-		}
-
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(10.0f, 2.5f, -125.0f), wolfRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(5.5f)));
-		wolf->Draw(*activeShader);
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(15.0f, 2.5f, -128.0f), wolfRotation + glm::vec3(-90.0f, 0.0f, 3.0f), glm::vec3(5.2f)));
-		wolf->Draw(*activeShader);
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(20.50f, 2.5f, -128.0f), wolfRotation + glm::vec3(-90.0f, 0.0f, -1.0f), glm::vec3(5.4f)));
-		wolf->Draw(*activeShader);
-
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-50.0f, 4.95f, -130.0f), leonMarinoRotation + glm::vec3(-90.0f, 0.0f, 0.0f), glm::vec3(0.7f)));
-		leonMarino->Draw(*activeShader);
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(-10.0f, 5.05f, -130.0f), leonMarinoRotation + glm::vec3(-90.0f, 0.0f, 90.0f), glm::vec3(1.65f)));
-		leonMarino->Draw(*activeShader);
-
-		activeShader->setMat4("model", BuildModelMatrix(
-			glm::vec3(-22.0f, 5.1f, 12.0f),
-			zorroRotation + glm::vec3(-90.0f, 0.0f, 90.0f),
-			glm::vec3(1.0f) * zorroBreathingScaleFactor));
-		zorro->Draw(*activeShader);
-
-		activeShader->setMat4("model", BuildModelMatrix(glm::vec3(48.0f, 6.8f, -100.0f), renoRotation + glm::vec3(-90.0f, 0.0f, -150.0f), glm::vec3(1.8f)));
-		reno->Draw(*activeShader);
-
-		if (sceneMode < 2) {
-			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(0.0f, 22.0f, 17.5f), osoARotation + glm::vec3(90, 180, 90), glm::vec3(1.2f)));
-			osoA->Draw(*activeShader);
-		}
-
-		if (sceneMode == 0) {
-			activeShader->setMat4("model", BuildModelMatrix(glm::vec3(5.5f, 5.0f + pinguinoDeathOffsetY, -10.0f), pinguinoRotation + glm::vec3(-90.0f, 0.0f, 160.0f), glm::vec3(1.15f)));
-			pinguino->Draw(*activeShader);
-		}
+		DrawCenterIglus(*activeShader, derretimiento);
+		DrawCenterLandWildlife(*activeShader, derretimiento);
 
 		if (sceneMode == 1) {
 			activeShader->setMat4("model", tanqueGrandeModel);
@@ -1262,21 +2074,11 @@ bool Update() {
 		}
 
 		if (sceneMode == 0) {
-			activeShader->setMat4("model", barconewModel);
+			activeShader->setMat4("model", BuildModelMatrix(
+				barconewPosition,
+				barconewRotation,
+				barconewScale));
 			barconew->Draw(*activeShader);
-
-			activeShader->setMat4("model", pexDoradoModel);
-			pexDorado->Draw(*activeShader);
-
-			pez->UpdateAnimation(deltaTime);
-			dynamicShader->use();
-			dynamicShader->setMat4("projection", projection);
-			dynamicShader->setMat4("view", view);
-			dynamicShader->setMat4("model", pezModel);
-			dynamicShader->setMat4("gBones", MAX_RIGGING_BONES, pez->gBones);
-			pez->Draw(*dynamicShader);
-			// restore active shader
-			activeShader->use();
 		}
 
 		// (Iceberg grande final ya gestionado en DrawSceneIcebergs)
@@ -1345,9 +2147,6 @@ bool Update() {
 			personaje->Draw(*dynamicShader);
 			activeShader->use();
 		}
-
-		activeShader->setMat4("model", sealModel);
-		seal->Draw(*activeShader);
 
 		trabajadorAnimado->UpdateAnimation(deltaTime);
 			dynamicShader->use();
